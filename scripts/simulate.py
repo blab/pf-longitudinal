@@ -9,9 +9,9 @@ These parameters are hardcoded in because I spent waaaay too long trying to make
 them not hardcoded in to no avail:
 Z = 0.005, parasite gone threshhold
 r = 16, initial parasite multiplication rate
-alpha = 0.000015, strain specific immunity acquisition rate
+alpha = 0.05, strain specific immunity acquisition rate
 beta = 0.003, strain specific immunity loss rate
-l = 0.00000006, general immunity acquisition rate
+l = 0.001, general immunity acquisition rate
 delta = 0.005, general immunity loss rate
 epsilon = 0.056, initial number of infected RBCs in millions
 """
@@ -73,13 +73,13 @@ def dP(x,y,z,r=16):
     value = 1-h(x)
     return (value*(np.log(r)/2) - z - y)*x
 
-def dS(x,y,alpha=0.000015,beta=0.003):
+def dS(x,y,alpha=0.05,beta=0.003):
     '''
     dS/dT per strain
     '''
-    return (alpha*x) - (beta*h(x)*y)
+    return ((1-h(x))*alpha) - (beta*h(x)*y)
 
-def equations(t,state,n,l=0.00000006,delta=0.005):
+def equations(t,state,n,l=0.001,delta=0.005):
     '''
     Returns ODEs to integrate
     '''
@@ -89,7 +89,7 @@ def equations(t,state,n,l=0.00000006,delta=0.005):
     dY = np.empty((2*n)+1)
     dY[0:n] = np.vectorize(dP)(p,s,G)
     dY[n:(2*n)] = np.vectorize(dS)(p,s)
-    dY[-1] = (l*np.sum(p)) - (delta*h(np.sum(p))*G)
+    dY[-1] = (l*(1-h(np.sum(p)))) - (delta*h(np.sum(p))*G)
     return dY
 
 def get_bite_times(M,p,y):

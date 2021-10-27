@@ -1,0 +1,13 @@
+name: antigens
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - numpy
+  - scipy
+  - pandas
+  - seaborn
+  - matplotlib
+  - ipykernel
+  - sympy
