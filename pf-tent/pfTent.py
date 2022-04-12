@@ -261,7 +261,7 @@ def simulate_person(y,a,w, k=0.11, alpha=1/500, beta=1/500, gamma=1/50, delta=1/
             for i in locs[0]:
                 params = get_infection_params(duration, meroz, timeToPeak, maxParasitemia)
                 params = modulate_params(strains[:,i], imatrix[:,:,t], ivector[t], params, w)
-                if params[0] > 0 and params[3] > 0 and params[1] > 0.001 and params[0] > params[2]:
+                if params[0] > 0 and params[3] > 0 and params[1] > 0.001 and params[0] > params[2] and params[2] > 0:
                     parasitemia = get_parasitemia(params, pgone)
                     add_infection(parasitemia,pmatrix,strains[:,i],t,smatrix,i)
     return pmatrix, smatrix, imatrix, ivector, malaria
