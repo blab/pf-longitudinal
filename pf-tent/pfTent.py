@@ -31,6 +31,14 @@ Variables:
 import numpy as np
 import scipy.stats as st
 
+def load_data():
+    '''
+    Loads data used in the model
+    '''
+    fever = np.load("data/fever.npy")
+    breaks = np.load("data/breaks.npy")
+    return fever, breaks
+
 def simulate_bites(y,eir):
     '''
     Produces a vector with bite times up until year, y, is reached.
@@ -220,7 +228,17 @@ def update_immunity(pM, iV, iM, t, immune_thresh, alpha, beta, gamma, delta,):
                 else:
                     iM[i,j,t] = max(iM[i,j,t-1] - delta, 0)
 
-def treat_as_needed(treatment_thresh, pM, sM, t, m):
+def get_fever_threshold(t, eir,fever,breaks):
+    '''
+    Pulls fever threshold from model used in ["Quantification of anti-parasite and anti-disease immunity to malaria as a function of age and exposure"](https://elifesciences.org/articles/35832).
+    '''
+    age_loc = np.flatnonzero(breaks[:,0]>=t/365)[0]
+    eir_loc = np.flatnonzero(breaks[:,2]>=eir)[0]
+    pardens_loc = np.flatnonzero(fever[age_loc,:,eir_loc])[0]
+    thresh = breaks[pardens_loc,1]
+    return 10**thresh
+
+def treat_as_needed(threshhold, pM, sM, t, m):
     '''
     Treat if parasitemia goes above certain threshold. Modifies parasite density
     matrix & strain matrix. Returns number of malaria cases thus far in
@@ -231,14 +249,14 @@ def treat_as_needed(treatment_thresh, pM, sM, t, m):
         t = time
         m = # of malaria cases that have occurred
     '''
-    threshhold = st.lognorm.rvs(s=0.4,scale=treatment_thresh)
+    #threshhold = st.lognorm.rvs(s=0.4,scale=treatment_thresh) Can add back in if want stochasticity to treatment threshold
     if pM[0,:,t].sum(axis=0) > threshhold:
         pM[:,:,t+1:] = 0
         sM[:,t+1:] = 0
         m.append(t)
     return m
 
-def simulate_person(y,a,w, eir=40, alpha=1/500, beta=1/500, gamma=1/50, delta=1/500,immune_thresh=10,treatment_thresh=100000,duration = 500, meroz = .01, timeToPeak = 10, maxParasitemia = 6, pgone=-3):
+def simulate_person(y,a,w,fever,breaks, eir=40, alpha=1/500, beta=1/500, gamma=1/50, delta=1/500,immune_thresh=10,duration = 500, meroz = .01, timeToPeak = 10, maxParasitemia = 6, pgone=-3):
     '''
     Runs simulation for one person.
     Returns matrix of parasitemia by allele across time & matrix of strains
@@ -256,6 +274,7 @@ def simulate_person(y,a,w, eir=40, alpha=1/500, beta=1/500, gamma=1/50, delta=1/
     counter = 0
     for t in range(365*y):
         update_immunity(pmatrix,ivector,imatrix,t,immune_thresh, alpha, beta, gamma, delta)
+        treatment_thresh = get_fever_threshold(t,eir,fever,breaks)
         malaria = treat_as_needed(treatment_thresh,pmatrix,smatrix,t,malaria)
         if t in bites:
             locs = np.where(bites == t)
