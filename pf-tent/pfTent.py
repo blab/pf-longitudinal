@@ -3,7 +3,7 @@ Code for simulating longitudinal trajectories of individuals with _P.
 falciparum_ infections.
 Variables:
   y = years to simulate
-  k = 0.11, biting rate per day
+  eir = 40, average annual entomological inoculation rate
   n = number of strains simulated
 
   alpha = 1/500, general immunity acquistion rate
@@ -31,13 +31,14 @@ Variables:
 import numpy as np
 import scipy.stats as st
 
-def simulate_bites(y,k):
+def simulate_bites(y,eir):
     '''
     Produces a vector with bite times up until year, y, is reached.
 
-    Time between bites pulled from exponential distribution wih mean rate of k.
+    Time between bites pulled from exponential distribution wih mean rate of k = eir/365.
     '''
-    n = round(y*k*365*2)
+    k = eir/365
+    n = round(y*eir*2)
     spaces = st.expon.rvs(scale=(1/k), loc=0, size=n)
     times = np.cumsum(spaces)
     trimmed = times[times <= y*365]
@@ -237,14 +238,14 @@ def treat_as_needed(treatment_thresh, pM, sM, t, m):
         m.append(t)
     return m
 
-def simulate_person(y,a,w, k=0.11, alpha=1/500, beta=1/500, gamma=1/50, delta=1/500,immune_thresh=10,treatment_thresh=100000,duration = 500, meroz = .01, timeToPeak = 10, maxParasitemia = 6, pgone=-3):
+def simulate_person(y,a,w, eir=40, alpha=1/500, beta=1/500, gamma=1/50, delta=1/500,immune_thresh=10,treatment_thresh=100000,duration = 500, meroz = .01, timeToPeak = 10, maxParasitemia = 6, pgone=-3):
     '''
     Runs simulation for one person.
     Returns matrix of parasitemia by allele across time & matrix of strains
     across time.
     '''
     malaria = []
-    bites = simulate_bites(y,k)
+    bites = simulate_bites(y,eir)
     n_bites = len(bites)
     strains = simulate_strains(n_bites,a)
     pmatrix = create_allele_matrix(a, y)
@@ -295,10 +296,7 @@ def check_parasitemia(y,pM,detect_thresh=0.001):
     perpos = np.average(ppositivity)
     return pdensity, perpos
 
-def check_infection_length(sM,y):
-    '''
-    Returns infection length for all infections.
-    '''
+def check_infection_length(sM,y, malaria):
     lengths = []
     infections = len(sM)
     for i in range(infections):
@@ -306,6 +304,8 @@ def check_infection_length(sM,y):
         for j in range(y*365):
             if sM[i,j] == 1:
                 counter += 1
+                if j in malaria:
+                    counter = 0
         if counter > 0:
             lengths.append(counter)
     return lengths
