@@ -21,7 +21,7 @@ Variables:
 
   treatment_thresh = 100000, average parasitemia threshhold at which people get treatment
   pgone = -3, threshold for parasites being gonelog10 scale
-  immune_thresh = 10, threshold at which you start gaining immunity
+  immune_thresh = 0.01, threshold at which you start gaining immunity
   detect_thresh = 0.001, threshold for detecting infection. Same as pgone.
 
   w = vector for weighting immune impact, should all add to one. Length is len(a) + 1
@@ -256,7 +256,7 @@ def treat_as_needed(threshhold, pM, sM, t, m):
         m.append(t)
     return m
 
-def simulate_person(y,a,w,fever,breaks, eir=40, alpha=1/500, beta=1/500, gamma=1/50, delta=1/500,immune_thresh=10,duration = 500, meroz = .01, timeToPeak = 10, maxParasitemia = 6, pgone=-3):
+def simulate_person(y,a,w,fever,breaks, eir=40, alpha=1/500, beta=1/500, gamma=1/50, delta=1/500,immune_thresh=0.01,duration = 500, meroz = .01, timeToPeak = 10, maxParasitemia = 6, pgone=-3):
     '''
     Runs simulation for one person.
     Returns matrix of parasitemia by allele across time & matrix of strains
@@ -277,13 +277,14 @@ def simulate_person(y,a,w,fever,breaks, eir=40, alpha=1/500, beta=1/500, gamma=1
         treatment_thresh = get_fever_threshold(t,eir,fever,breaks)
         malaria = treat_as_needed(treatment_thresh,pmatrix,smatrix,t,malaria)
         if t in bites:
-            locs = np.where(bites == t)
-            for i in locs[0]:
-                params = get_infection_params(duration, meroz, timeToPeak, maxParasitemia)
-                params = modulate_params(strains[:,i], imatrix[:,:,t], ivector[t], params, w)
-                if params[0] > 0 and params[3] > 0 and params[1] > 0.001 and params[0] > params[2] and params[2] > 0:
-                    parasitemia = get_parasitemia(params, pgone)
-                    add_infection(parasitemia,pmatrix,strains[:,i],t,smatrix,i)
+            if not len(malaria) > 0 or t - malaria[-1] > 7:
+                locs = np.where(bites == t)
+                for i in locs[0]:
+                    params = get_infection_params(duration, meroz, timeToPeak, maxParasitemia)
+                    params = modulate_params(strains[:,i], imatrix[:,:,t], ivector[t], params, w)
+                    if params[0] > 0 and params[3] > 0 and params[1] > 0.001 and params[0] > params[2] and params[2] > 0:
+                        parasitemia = get_parasitemia(params, pgone)
+                        add_infection(parasitemia,pmatrix,strains[:,i],t,smatrix,i)
     return pmatrix, smatrix, imatrix, ivector, malaria
 
 def check_moi(y,sM):
