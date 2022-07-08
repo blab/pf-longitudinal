@@ -178,7 +178,7 @@ def modulate_params(gtype, strain_imm, gen_imm, params, w):
     M = np.zeros((4, n_loci+1))
     for i, p in enumerate(params):
         for j, v in enumerate(imm):
-            if v == 0:
+            if v == 0 | i == 2: # Immunity doesn't impact time to peak.
                 M[i,j] = p*w[j]
             else:
                 M[i,j] = sigmoid(v, p*w[j])
@@ -217,11 +217,11 @@ def update_immunity(pM, iV, iM, t, immune_thresh, alpha, beta, gamma, delta,):
     for i in np.arange(loci):
         for j in np.arange(n_alleles):
             if pM[i,j,t] > immune_thresh:
-                if t == 0:
-                    print("Parasitemia was high enough at t=0, wowza, for strain imm")
-                    iM[i,j,t] = gamma
-                else:
-                    iM[i,j,t] = min(iM[i,j,t-1] + gamma,1)
+                iM[i,j,t] = 1
+                #if t == 0:
+                #    iM[i,j,t] = gamma
+                #else:
+                #    iM[i,j,t] = min(iM[i,j,t-1] + gamma,1)
             else:
                 if t == 0:
                     iM[i,j,t] = 0
