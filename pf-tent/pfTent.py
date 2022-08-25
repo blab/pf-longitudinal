@@ -6,9 +6,6 @@ Variables:
   eir = 40, average annual entomological inoculation rate
   n = number of strains simulated
 
-  alpha = 1/500, general immunity acquistion rate
-  beta = 1/500, general immunity loss rate
-  gamma = 1/50, strain immunity acquistion rate
   delta = 1/500, strain immunity loss rate
 
   duration = 500, max infection length
@@ -82,13 +79,6 @@ def create_allele_matrix(a,y):
     M = np.zeros((length,width,days))
     return M
 
-def create_gen_imm(y):
-    '''
-    creates vector for immunity of lenth y *365
-    '''
-    immunity = np.zeros(y*365)
-    return immunity
-
 def get_infection_params(duration, meroz, timeToPeak, maxParasitemia):
     '''
     Generates the duration of infection from a normal distribution.
@@ -159,12 +149,11 @@ def sigmoid(x,param,xh=0.5,b=-1):
     new_param = param/(c/np.tan(np.pi/2*x)**b+1)
     return new_param
 
-def modulate_params(gtype, strain_imm, gen_imm, params, w):
+def modulate_params(gtype, strain_imm, params, w):
     '''
     Changes all infection params according to immunity:
         gtype = genotype vector for infection
         strain_imm = strain_immunity at time of infection
-        gen_imm = general immunity at time of infection.
         params = params vector to modulate
         w = vector modulating immunity effect at locus
     '''
@@ -173,11 +162,10 @@ def modulate_params(gtype, strain_imm, gen_imm, params, w):
     for i in np.arange(n_loci):
         allele = gtype[i]
         cross[i] = strain_imm[i,allele]
-    imm = np.append(gen_imm, cross)
 
     M = np.zeros((4, n_loci+1))
     for i, p in enumerate(params):
-        for j, v in enumerate(imm):
+        for j, v in enumerate(cross):
             if v == 0 | i == 2: # Immunity doesn't impact time to peak.
                 M[i,j] = p*w[j]
             else:
@@ -189,28 +177,14 @@ def modulate_params(gtype, strain_imm, gen_imm, params, w):
     modified[2] = np.rint(modified[2])
     return modified
 
-def update_immunity(pM, iV, iM, t, immune_thresh, alpha, beta, gamma, delta,):
+def update_immunity(pM, iM, t, immune_thresh, delta,):
     '''
     If parasites present, gains immunity. If absent, loses immunity:
         pM = parasitemia matrix at each alleles across time.
-        iV = vector of general immunity across time.
         iM = matrix of strain immunity at each allele across time
         t = time
         immune_thresh = parasite density threshold at which gain immunity.
     '''
-    # General immunity
-    if pM[0,:,t].sum(axis=0) > immune_thresh:
-        if t == 0:
-            print("Parasitemia was high enough at t=0, wowza, for gen imm")
-            iV[t] = alpha
-        else:
-            iV[t] = min(iV[t-1] + alpha,1)
-    else:
-        if t == 0:
-            iV[t] = 0
-        else:
-            iV[t] = max(iV[t-1] - beta, 0)
-
     # Strain immunity
     loci = pM.shape[0]
     n_alleles = pM.shape[1]
@@ -218,10 +192,6 @@ def update_immunity(pM, iV, iM, t, immune_thresh, alpha, beta, gamma, delta,):
         for j in np.arange(n_alleles):
             if pM[i,j,t] > immune_thresh:
                 iM[i,j,t] = 1
-                #if t == 0:
-                #    iM[i,j,t] = gamma
-                #else:
-                #    iM[i,j,t] = min(iM[i,j,t-1] + gamma,1)
             else:
                 if t == 0:
                     iM[i,j,t] = 0
@@ -269,11 +239,10 @@ def simulate_person(y,a,w,fever,breaks, eir=40, alpha=1/500, beta=1/500, gamma=1
     pmatrix = create_allele_matrix(a, y)
     smatrix = create_strain_matrix(n_bites,y)
     imatrix = create_allele_matrix(a,y)
-    ivector = create_gen_imm(y)
 
     counter = 0
     for t in range(365*y):
-        update_immunity(pmatrix,ivector,imatrix,t,immune_thresh, alpha, beta, gamma, delta)
+        update_immunity(pmatrix,imatrix,t,immune_thresh, delta)
         treatment_thresh = get_fever_threshold(t,eir,fever,breaks)
         malaria = treat_as_needed(treatment_thresh,pmatrix,smatrix,t,malaria)
         if t in bites:
@@ -281,11 +250,11 @@ def simulate_person(y,a,w,fever,breaks, eir=40, alpha=1/500, beta=1/500, gamma=1
                 locs = np.where(bites == t)
                 for i in locs[0]:
                     params = get_infection_params(duration, meroz, timeToPeak, maxParasitemia)
-                    params = modulate_params(strains[:,i], imatrix[:,:,t], ivector[t], params, w)
+                    params = modulate_params(strains[:,i], imatrix[:,:,t], params, w)
                     if params[0] > 0 and params[3] > 0 and params[1] > 0.001 and params[0] > params[2] and params[2] > 0:
                         parasitemia = get_parasitemia(params, pgone)
                         add_infection(parasitemia,pmatrix,strains[:,i],t,smatrix,i)
-    return pmatrix, smatrix, imatrix, ivector, malaria
+    return pmatrix, smatrix, imatrix, malaria
 
 def check_moi(y,sM):
     '''
