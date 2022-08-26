@@ -4,8 +4,6 @@ falciparum_ infections.
 Variables:
   y = years to simulate
   eir = 40, average annual entomological inoculation rate
-  n = number of strains simulated
-
   delta = 1/500, strain immunity loss rate
 
   duration = 500, max infection length
@@ -13,13 +11,8 @@ Variables:
   timeToPeak = 10, time from first parasitemia to peak
   maxParasitemia = 6, maximum parasitemia on log scale
 
-  xh = 0.5, midpoint location for sigmoid for immunity on params
-  b = -1, slope of sigmoid for immunity on params
-
-  treatment_thresh = 100000, average parasitemia threshhold at which people get treatment
   pgone = -3, threshold for parasites being gonelog10 scale
   immune_thresh = 0.01, threshold at which you start gaining immunity
-  detect_thresh = 0.001, threshold for detecting infection. Same as pgone.
 
   w = vector for weighting immune impact, should all add to one. Length is len(a) + 1
   a = vector containing # of alleles at each loci.
@@ -226,7 +219,7 @@ def treat_as_needed(threshhold, pM, sM, t, m):
         m.append(t)
     return m
 
-def simulate_person(y,a,w,fever,breaks, eir=40, alpha=1/500, beta=1/500, gamma=1/50, delta=1/500,immune_thresh=0.01,duration = 500, meroz = .01, timeToPeak = 10, maxParasitemia = 6, pgone=-3):
+def simulate_person(y,a,w,fever,breaks, eir=40, delta=1/250,immune_thresh=0.01,duration = 500, meroz = .01, timeToPeak = 10, maxParasitemia = 6, pgone=-3):
     '''
     Runs simulation for one person.
     Returns matrix of parasitemia by allele across time & matrix of strains
@@ -255,6 +248,39 @@ def simulate_person(y,a,w,fever,breaks, eir=40, alpha=1/500, beta=1/500, gamma=1
                         parasitemia = get_parasitemia(params, pgone)
                         add_infection(parasitemia,pmatrix,strains[:,i],t,smatrix,i)
     return pmatrix, smatrix, imatrix, malaria
+
+def simulate_cohort(n_people,y,a,w,delta=1/250,eir=40,immune_thresh=0.01,duration=500,meroz=0.1,timeToPeak=10,maxParasitemia=6,pgone=-3):
+    '''
+    Simulates an entire cohort of individuals.
+
+    Returns n_people x loci x alleles x t matrices tracking parasite density & immunity at each allele.
+    Returns dictionary containing strain matrices for each person.
+    Returns dictionary containing lists of malaria episodes for each person.
+
+    Input:
+        y = years to simulate
+        a = vector of len(loci) specifying number of alleles at each locus
+        w = immune weighting for each locus
+        delta = immunity waning rate
+    '''
+    # Create objects to record
+    all_parasites = np.zeros((n_people, len(a), max(a), y*365))
+    all_immunity = np.zeros((n_people, len(a), max(a), y*365))
+    all_strains = {}
+    all_malaria = {}
+
+    # Load dataset for fever threshhold
+    fever, breaks = tent.load_data()
+
+    # Simulate people
+    for person in range(n_people):
+        pmatrix, smatrix, imatrix, malaria = simulate_person(y,a,w,fever,breaks,eir=eir, delta=delta,immune_thresh=immune_thresh,duration=duration, meroz=meroz, timeToPeak=timeToPeak, maxParasitema=maxParasitema, pgone=pgone)
+        all_parasites[person,:,:,:] = pmatrix
+        all_immunity[person,:,:,:] = imatrix
+        all_strains[person] = smatrix
+        all_malaria[person] = malaria
+
+    return all_parasites, all_immunity, all_strains, all_malaria
 
 def check_moi(y,sM):
     '''
