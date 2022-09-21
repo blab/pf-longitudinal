@@ -222,8 +222,13 @@ def treat_as_needed(threshhold, pM, sM, t, m):
 def simulate_person(y,a,w,fever,breaks, eir=40, delta=1/250,immune_thresh=0.01,duration = 500, meroz = .01, timeToPeak = 10, maxParasitemia = 6, pgone=-3):
     '''
     Runs simulation for one person.
-    Returns matrix of parasitemia by allele across time & matrix of strains
-    across time.
+    Returns:
+    - matrix of parasitemia by allele across time
+    - matrix of strains across time
+    - matrix of immunity by allele across time
+    - matrix of infection starts + gtype of infection by day. Size is
+    (1+len(loci),n_infections). The first row is the day of the infection. The
+    remaining rows are the gtype of the infection.
     '''
     malaria = []
     bites = simulate_bites(y,eir)
@@ -232,6 +237,9 @@ def simulate_person(y,a,w,fever,breaks, eir=40, delta=1/250,immune_thresh=0.01,d
     pmatrix = create_allele_matrix(a, y)
     smatrix = create_strain_matrix(n_bites,y)
     imatrix = create_allele_matrix(a,y)
+    infections = {}
+    infections["day"] = []
+    infections["gtype"] = []
 
     counter = 0
     for t in range(365*y):
@@ -247,7 +255,17 @@ def simulate_person(y,a,w,fever,breaks, eir=40, delta=1/250,immune_thresh=0.01,d
                     if params[0] > 0 and params[3] > 0 and params[1] > 0.001 and params[0] > params[2] and params[2] > 0:
                         parasitemia = get_parasitemia(params, pgone)
                         add_infection(parasitemia,pmatrix,strains[:,i],t,smatrix,i)
-    return pmatrix, smatrix, imatrix, malaria
+                        infections["day"].append(t)
+                        infections["gtype"].append(strains[:,i])
+
+    n_infect = len(infections["day"])
+    infectmatrix = np.zeros((1+len(a),n_infect),dtype=int)
+    for i, day in enumerate(infections["day"]):
+        infectmatrix[0,i] = day
+        infectmatrix[1:,i] = infections["gtype"][i]
+    smatrix = smatrix[~np.all(smatrix == 0, axis=1)]
+    return pmatrix, smatrix, imatrix, malaria, infectmatrix
+
 
 def simulate_cohort(n_people,y,a,w,delta=1/250,eir=40,immune_thresh=0.01,duration=500,meroz=0.1,timeToPeak=10,maxParasitemia=6,pgone=-3):
     '''
@@ -256,6 +274,7 @@ def simulate_cohort(n_people,y,a,w,delta=1/250,eir=40,immune_thresh=0.01,duratio
     Returns n_people x loci x alleles x t matrices tracking parasite density & immunity at each allele.
     Returns dictionary containing strain matrices for each person.
     Returns dictionary containing lists of malaria episodes for each person.
+    Returns dictionary containing infection matrices for each person.
 
     Input:
         y = years to simulate
@@ -268,19 +287,21 @@ def simulate_cohort(n_people,y,a,w,delta=1/250,eir=40,immune_thresh=0.01,duratio
     all_immunity = np.zeros((n_people, len(a), max(a), y*365))
     all_strains = {}
     all_malaria = {}
+    all_infections = {}
 
     # Load dataset for fever threshhold
-    fever, breaks = tent.load_data()
+    fever, breaks = load_data()
 
     # Simulate people
     for person in range(n_people):
-        pmatrix, smatrix, imatrix, malaria = simulate_person(y,a,w,fever,breaks,eir=eir, delta=delta,immune_thresh=immune_thresh,duration=duration, meroz=meroz, timeToPeak=timeToPeak, maxParasitema=maxParasitema, pgone=pgone)
+        pmatrix, smatrix, imatrix, malaria, infections = simulate_person(y,a,w,fever,breaks,eir=eir, delta=delta,immune_thresh=immune_thresh,duration=duration, meroz=meroz, timeToPeak=timeToPeak, maxParasitemia=maxParasitemia, pgone=pgone)
         all_parasites[person,:,:,:] = pmatrix
         all_immunity[person,:,:,:] = imatrix
         all_strains[person] = smatrix
         all_malaria[person] = malaria
+        all_infections[person] = infections
 
-    return all_parasites, all_immunity, all_strains, all_malaria
+    return all_parasites, all_immunity, all_strains, all_malaria, all_infections
 
 def check_moi(y,sM):
     '''
@@ -324,3 +345,136 @@ def check_infection_length(sM,y, malaria):
         if counter > 0:
             lengths.append(counter)
     return lengths
+
+def get_visits(malaria,period,y):
+    '''
+    Returns passive & active visit dates in a list.
+    '''
+    start = np.random.randint(1,period)
+    if start > malaria[0]:
+        start = malaria[0]
+    active = set(range(start,y*365,period))
+    visits = list(active.union(set(malaria)))
+    visits.sort()
+    return visits
+
+def get_infection_windows(loci, allele, pmatrix, visits=[],infectmatrix=[],smatrix=[],n_infections=2):
+    '''
+    Returns(2,n_infection) with time range for given n_infections at given loci & given allele.
+    start = first day, end = last day ([,])
+    If visits provided, start & end correspond to measured timepoints.
+    If infectmatrix is provided, start & end correspond to true times.
+    '''
+    windows = np.zeros((2,n_infections),dtype=int) - 1
+
+    if len(visits)>0:
+        values = pmatrix[loci,allele,visits]
+        positiveVisits = values.nonzero()[0]
+        windows[0,0] = visits[positiveVisits[0]]
+        shifted = np.roll(positiveVisits,1)
+        test = positiveVisits-shifted
+        new = np.where(test>1)[0]
+        for i in range(0,n_infections):
+            if i<len(new):
+                windows[1,i] = visits[positiveVisits[new[i]-1]]
+                if i-1 >= 0:
+                    windows[0,i] = visits[positiveVisits[new[i-1]]]
+            else:
+                windows[1,i-1] = visits[positiveVisits[-1]]
+
+    elif len(infectmatrix)>0 and len(smatrix)>0:
+        bites = np.where(infectmatrix[loci+1,:] == allele)[0] # bites are locations where you get an infection at that allele
+        day = infectmatrix[0,bites[0]]
+        windows[0,0] = day
+        windows[1,0] = smatrix[bites[0],:].nonzero()[0][-1]
+        counter = 0
+
+        for i in range(1,len(bites)):
+            new_day = infectmatrix[0,bites[i]]
+            if new_day != day:
+                if i-counter < n_infections:
+                    windows[0,i-counter] = new_day
+                    windows[1,i-counter] = smatrix[bites[i],:].nonzero()[0][-1]
+                day = new_day
+            else:
+                counter += 1
+
+    else:
+        print("Must provide visits or infectmatrix & smatrix. If visits, will return measured time range of exposures. If infectmatrix & smatrix, will return true time range of exposures.")
+
+    return windows
+
+def get_peaks(pdensity):
+    '''
+    Finds the time of all parasite density peaks
+    '''
+    lag = np.pad(pdensity,1,mode='constant')[:-2]
+    sign = np.sign(pdensity-lag).astype(int)
+    lead = np.pad(sign,(0,1), mode='constant')[1:]
+    peak = np.where(sign > lead)[0]
+    if len(peak)==0:
+        peak = np.argmax(pdensity)
+    return peak
+
+def get_max_pdensity(pmatrix,loci,allele,window,visits=[]):
+    '''
+    Returns maximum parasite density in a given time_window.
+    '''
+    if len(visits)>0:
+        visits = np.asarray(visits)
+        visited = visits[(visits >= window[0]) & (visits <= window[1])]
+        pdensities = pmatrix[loci,allele,visited]
+        maxima = max(pdensities)
+    else:
+        pdensities = pmatrix[loci,allele,window[0]:window[1]+1]
+        peaktimes = get_peaks(pdensities)
+        maxima = pdensities[peaktimes[0]]
+    return maxima
+
+def get_max_exp1_exp2(all_parasites, all_infections, all_malaria,y,a,period=28,measured=True):
+    '''
+    Returns arrays of maximum parasite density for exposure 1 & 2.
+    If measured == True, this will be for measured maximums not true maximums.
+    '''
+    n_people = len(all_parasites)
+    test_1 = []
+    test_2 = []
+    control_1 = []
+    control_2 = []
+
+    for person in range(n_people):
+        if measured==True:
+            visits = get_visits(all_malaria[person],period,y)
+        else:
+            visits = []
+
+        # Control loci
+        counter = 0
+        for allele in range(a[0]):
+            windows = get_infection_windows(0,allele,all_parasites[person,...],visits=visits,infectmatrix=all_infections[person],smatrix=all_strains[person])
+            if np.all(windows[:,0]>=0):
+                control_1.append(get_max_pdensity(all_parasites[person,...],0,allele,windows[:,0], visits=visits))
+            else:
+                control_1.append(0)
+            if np.all(windows[:,1]>= 0): # WHY IS THIS NOT WORKING
+                control_2.append(get_max_pdensity(all_parasites[person,...],0,allele,windows[:,1], visits=visits))
+            else:
+                control_2.append(0)
+            counter += 1
+
+        # Test loci
+        counter = 0
+        test_loci = len(a)-1
+        for allele in range(a[test_loci]):
+            windows = get_infection_windows(test_loci,allele,all_parasites[person,...],visits=visits,infectmatrix=all_infections[person],smatrix=all_strains[person])
+            if np.all(windows[:,0] >=0):
+                test_1.append(get_max_pdensity(all_parasites[person,...],test_loci,allele,windows[:,0], visits=visits))
+            else:
+                test_1.append(0)
+            if np.all(windows[:,1] >=0):
+                test_2.append(get_max_pdensity(all_parasites[person,...],test_loci,allele,windows[:,1], visits=visits))
+            else:
+                test_2.append(0)
+            counter += 1
+
+    return control_1,control_2,test_1,test_2
