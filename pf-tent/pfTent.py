@@ -115,13 +115,15 @@ def get_parasitemia(params,pgone):
     peaktime = params[2].astype(int)
     pmax = params[3]
     gr = (pmax - mz)/peaktime
-    dr = (pgone - pmax) / (dur - peaktime - 1)
+    if dur - peaktime > 1:
+        dr = (pgone - pmax) / (dur - peaktime - 1)
+    else:
+        dr = (pgone-pmax)
     arr = np.zeros(dur)
     arr[0] = mz
-    for i in np.arange(1,peaktime+1):
-        arr[i] = arr[i-1] + gr
-    for i in np.arange(peaktime+1,dur):
-        arr[i] = arr[i-1] + dr
+    arr[1:peaktime+1] = gr
+    arr[peaktime+1:] = dr
+    arr = np.cumsum(arr)
     return arr
 
 def create_strain_matrix(n,y):
@@ -144,13 +146,12 @@ def add_infection(p,pM,gtype,t,sM,s):
     '''
     dur = len(p)
     days = pM.shape[2]
-    n_alleles = len(gtype)
-    for i in np.arange(n_alleles):
-        if t+dur >= days:
-            dur = days-t
-            p = p[:dur]
-        pM[i,gtype[i],t:t+dur] += 10**p
-        sM[s,t:t+dur] = 1
+    n_loci = len(gtype)
+    if t+dur >= days:
+        dur = days-t
+        p = p[:dur]
+    pM[np.arange(n_loci),(gtype),t:t+dur] += 10**p
+    sM[s,t:t+dur] = 1
 
 def sigmoid(x,param,xh=0.5,b=-1):
     '''
@@ -169,23 +170,13 @@ def modulate_params(gtype, strain_imm, params, w):
         w = vector modulating immunity effect at locus
     '''
     n_loci = len(gtype)
-    cross = np.empty(n_loci)
-    for i in np.arange(n_loci):
-        allele = gtype[i]
-        cross[i] = strain_imm[i,allele]
-
-    M = np.zeros((4, n_loci+1))
-    for i, p in enumerate(params):
-        for j, v in enumerate(cross):
-            if v == 0 | i == 2: # Immunity doesn't impact time to peak.
-                M[i,j] = p*w[j]
-            else:
-                M[i,j] = sigmoid(v, p*w[j])
-    modified = np.zeros(4)
-    for i in np.arange(4):
-        modified[i] = M[i,:].sum()
+    cross = strain_imm[np.arange(n_loci),(gtype)]
+    cross_M = np.broadcast_to(cross,(4,n_loci))
+    pw_M = np.broadcast_to(w,(4,n_loci)) * np.broadcast_to(params[:,None],(4,n_loci))
+    M = sigmoid(cross_M,pw_M)
+    modified = M.sum(axis=1)
+    modified[2] = params[2]
     modified[0] = np.rint(modified[0])
-    modified[2] = np.rint(modified[2])
     return modified
 
 def update_immunity(pM, iM, t, immune_thresh, delta,):
