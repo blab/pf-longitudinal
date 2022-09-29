@@ -65,7 +65,7 @@ def simulate_strains(n,a):
     loci has 3 alleles; the second loci has 4 alleles, and the third
     loci has 6 alleles.
 
-    Returns L x n matrix, where L = the number of loci.
+    Returns genotype as a L x n matrix, where L = the number of loci.
     '''
     length = len(a)
     M = np.empty((length,n),dtype=int)
