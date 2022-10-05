@@ -93,80 +93,63 @@ def get_max_pdensity(pmatrix,loci,allele,window,visits=[]):
         maxima = pdensities[peaktimes[0]]
     return maxima
 
-def get_max_exp1_exp2(all_parasites, all_infections, all_strains, all_malaria,y,a,test,period=28,measured=True):
+def get_max_exp1_exp2(all_parasites, all_infections, all_strains, all_malaria,y,a,loci,period=28,measured=True):
     '''
     Returns arrays of maximum parasite density for exposure 1 & 2.
     If measured == True, this will be for measured maximums not true maximums.
     '''
     n_people = len(all_parasites)
-    test_1 = []
-    test_2 = []
-    control_1 = []
-    control_2 = []
+    control = np.zeros((a[0]*n_people,2))
+    test = np.zeros((a[loci]*n_people,2))
+    n_control = []
+    n_test = []
 
+    ccount = 0
+    tcount = 0
     for person in range(n_people):
+        cstart = ccount
+        tstart = tcount
         if measured==True:
             visits = get_visits(all_malaria[person],period,y)
         else:
             visits = []
 
         # Control loci
-        counter = 0
-        for allele in range(a[0]):
-            all_parasites[person,...]
-            all_infections[person]
-            all_strains[person]
+        for allele in range(a[0]): ## SPEED UP by doing get-infection-windows for all alleles all at once.
             windows = get_infection_windows(0,allele,all_parasites[person,...],visits=visits,infectmatrix=all_infections[person],smatrix=all_strains[person])
             if np.all(windows[:,0]>=0):
-                control_1.append(get_max_pdensity(all_parasites[person,...],0,allele,windows[:,0], visits=visits))
-            else:
-                control_1.append(0)
+                control[ccount,0] = get_max_pdensity(all_parasites[person,...],0,allele,windows[:,0], visits=visits)
             if np.all(windows[:,1]>= 0): # WHY IS THIS NOT WORKING
-                control_2.append(get_max_pdensity(all_parasites[person,...],0,allele,windows[:,1], visits=visits))
-            else:
-                control_2.append(0)
-            counter += 1
+                control[ccount,1] = get_max_pdensity(all_parasites[person,...],0,allele,windows[:,1], visits=visits)
+            ccount += 1
 
         # Test loci
-        counter = 0
-        #test_loci = len(a)-1
-        for allele in range(a[test]):
-            windows = get_infection_windows(test,allele,all_parasites[person,...],visits=visits,infectmatrix=all_infections[person],smatrix=all_strains[person])
+        for allele in range(a[loci]):
+            windows = get_infection_windows(loci,allele,all_parasites[person,...],visits=visits,infectmatrix=all_infections[person],smatrix=all_strains[person])
             if np.all(windows[:,0] >=0):
-                test_1.append(get_max_pdensity(all_parasites[person,...],test,allele,windows[:,0], visits=visits))
-            else:
-                test_1.append(0)
+                test[tcount,0] = get_max_pdensity(all_parasites[person,...],loci,allele,windows[:,0], visits=visits)
             if np.all(windows[:,1] >=0):
-                test_2.append(get_max_pdensity(all_parasites[person,...],test,allele,windows[:,1], visits=visits))
-            else:
-                test_2.append(0)
-            counter += 1
+                test[tcount,1] = get_max_pdensity(all_parasites[person,...],loci,allele,windows[:,1], visits=visits)
+            tcount+= 1
 
-    return control_1,control_2,test_1,test_2
+        person_ctrl = control[cstart:ccount,:]
+        test_ctrl = control[tstart:tcount,:]
+        n_control.append(len(person_ctrl[~(person_ctrl ==0).any(1)]))
+        n_test.append(len(test_ctrl[~(test_ctrl==0).any(1)]))
+
+    return control[~(control==0).any(1)],test[~(test==0).any(1)], n_control, n_test
 
 def get_log(arr):
     new_arr = [np.log10(value) if value != 0 else -3 for value in arr]
     return np.asarray(new_arr)
 
-def get_pvalue_1st2nd(all_parasites,all_infections,all_malaria,y,a,l,measured):
+def get_diff(control, test):
     '''
-    Returns pvalue of Mann-Whitney U Test comparing diff in parasite density for first vs. second infection at test loci compared to control loci.
+    Returns difference in parasite density for control & test from 1st to 2nd exposure.
     '''
-    ctrl1,ctrl2,test1,test2 = get_max_exp1_exp2(all_parasites,all_infections,all_malaria,y,a,l,measured=measured)
-    diff_control = get_log(ctrl2) - get_log(ctrl1)
-    diff_test = get_log(test2) - get_log(test1)
-    s,pvalue =st.mannwhitneyu(x=diff_control,y=diff_test)
-    return pvalue
-
-def get_pvalue_1st2nd(all_parasites,all_infections,all_strains,all_malaria,y,a,l,measured):
-    '''
-    Returns pvalue of Mann-Whitney U Test comparing diff in parasite density for first vs. second infection at test loci compared to control loci.
-    '''
-    ctrl1,ctrl2,test1,test2 = get_max_exp1_exp2(all_parasites,all_infections,all_strains,all_malaria,y,a,l,measured=measured)
-    diff_control = get_log(ctrl2) - get_log(ctrl1)
-    diff_test = get_log(test2) - get_log(test1)
-    s,pvalue =st.mannwhitneyu(x=diff_control,y=diff_test)
-    return pvalue
+    diff_control = get_log(control[:,1]) - get_log(control[:,0])
+    diff_test = get_log(test[:,1]) - get_log(test[:,0])
+    return diff_control, diff_test
 
 def get_sens_spec(control, test, cutoff):
     '''
@@ -182,17 +165,26 @@ def get_sens_spec(control, test, cutoff):
     spec = tn/(tn+fp)
     return sens, spec
 
-def power_calc_1st2nd(y,a,w,experiments,eir=40,cutoff=0.05,measured=True):
+
+def power_calc_1st2nd(y,a,w,experiments,eir=40,intervals=[10,50,100,500],cutoff=0.05,measured=True):
     '''
     Returns sensitivity & specificity for 10**x number of people.
     Test = Diff in parasite density at first vs. second exposure.
-    x = range(0,4)
-    experiments = number of experiments
     '''
     people = []
     sensitivity = []
     specificity = []
-    intervals = [10,50,100,500]
+    results = {}
+    results['control'] = {}
+    results['test'] = {}
+    results['control']['diff_control'] = []
+    results['control']['diff_test'] = []
+    results['control']['exp2_control'] = []
+    results['control']['exp2_test'] = []
+    results['test']['diff_control'] = []
+    results['test']['diff_test'] = []
+    results['test']['exp2_control'] = []
+    results['test']['exp2_test'] = []
     for n_people in intervals:
         print('n_people: ' + str(n_people))
         control_pvalue = []
@@ -200,15 +192,25 @@ def power_calc_1st2nd(y,a,w,experiments,eir=40,cutoff=0.05,measured=True):
         for experiment in range(experiments):
             all_parasites, all_immunity, all_strains, all_malaria, all_infections = tent.simulate_cohort(n_people,y,a,w,eir=eir)
             for l in [1,len(a)-1]:
-                pvalue = get_pvalue_1st2nd(all_parasites,all_infections,all_strains,all_malaria,y,a,l,measured=measured)
+                control,test, n_control, n_test = get_max_exp1_exp2(all_parasites,all_infections,all_strains,all_malaria,y,a,l,measured=measured)
+                diff_control, diff_test = get_diff(control,test)
+                s,pvalue = st.mannwhitneyu(x=diff_control,y=diff_test)
                 if l == 1:
                     control_pvalue.append(pvalue)
+                    results['control']['diff_control'].extend(diff_control)
+                    results['control']['diff_test'].extend(diff_test)
+                    results['control']['exp2_control'].extend(n_control)
+                    results['control']['exp2_test'].extend(n_test)
                 else:
                     test_pvalue.append(pvalue)
+                    results['test']['diff_control'].extend(diff_control)
+                    results['test']['diff_test'].extend(diff_test)
+                    results['test']['exp2_control'].extend(n_control)
+                    results['test']['exp2_test'].extend(n_test)
         sens, spec = get_sens_spec(control_pvalue,test_pvalue,cutoff)
         sensitivity.append(sens)
         specificity.append(spec)
         people.append(n_people)
 
     df = pd.DataFrame({'n_people':people,'sensitivity':sensitivity, 'specificity':specificity})
-    return df
+    return df, results
