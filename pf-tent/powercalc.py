@@ -217,3 +217,11 @@ def power_calc_1st2nd(y,a,w,experiments,eir=40,intervals=[10,50,100,500],cutoff=
 
     df = pd.DataFrame({'n_people':people,'sensitivity':sensitivity, 'specificity':specificity})
     return df, results
+
+def get_weights(imp,n_other=4):
+    '''
+    Returns weight of other loci & weight of test loci. 
+    '''
+    wo = 1/(imp+n_other)
+    wl = imp/(imp+n_other)
+    return wo, wl
