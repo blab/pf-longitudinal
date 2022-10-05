@@ -56,7 +56,7 @@ def simulate_bites(y,eir):
     bites = np.ceil(trimmed).astype(int)
     return bites
 
-def simulate_strains(n,a):
+def simulate_strains(n,a,power=0):
     '''
     n = number of strains to simulate
     a = vector whose length corresponds to number of loci.
@@ -69,7 +69,10 @@ def simulate_strains(n,a):
     '''
     length = len(a)
     M = np.empty((length,n),dtype=int)
-    floats = np.random.rand(length,n)
+    if power > 0:
+        floats = np.random.power(power,(length,n))
+    else:
+        floats = np.random.rand(length,n)
     genotype = np.ceil(floats*np.repeat(a,n).reshape(length,n))-1
     M[:] = genotype
     return M
@@ -222,7 +225,7 @@ def treat_as_needed(threshhold, pM, sM, t, m):
         m.append(t)
     return m
 
-def simulate_person(y,a,w,fever_arr, eir=40, delta=1/250,immune_thresh=0.01,duration = 500, meroz = .01, timeToPeak = 10, maxParasitemia = 6, pgone=-3):
+def simulate_person(y,a,w,fever_arr, eir=40, delta=1/250,immune_thresh=0.01,duration = 500, meroz = .01, timeToPeak = 10, maxParasitemia = 6, pgone=-3,power=0):
     '''
     Runs simulation for one person.
     Returns:
@@ -236,7 +239,7 @@ def simulate_person(y,a,w,fever_arr, eir=40, delta=1/250,immune_thresh=0.01,dura
     malaria = []
     bites = simulate_bites(y,eir)
     n_bites = len(bites)
-    strains = simulate_strains(n_bites,a)
+    strains = simulate_strains(n_bites,a,power)
     params_matrix = simulate_params(n_bites,duration,meroz,timeToPeak,maxParasitemia)
     pmatrix = create_allele_matrix(a, y)
     smatrix = create_strain_matrix(n_bites,y)
@@ -271,7 +274,7 @@ def simulate_person(y,a,w,fever_arr, eir=40, delta=1/250,immune_thresh=0.01,dura
     return pmatrix, smatrix, imatrix, malaria, infectmatrix
 
 
-def simulate_cohort(n_people,y,a,w,delta=1/250,eir=40,immune_thresh=0.01,duration=500,meroz=0.1,timeToPeak=10,maxParasitemia=6,pgone=-3):
+def simulate_cohort(n_people,y,a,w,delta=1/250,eir=40,immune_thresh=0.01,duration=500,meroz=0.1,timeToPeak=10,maxParasitemia=6,pgone=-3,power=0):
     '''
     Simulates an entire cohort of individuals.
 
@@ -299,7 +302,7 @@ def simulate_cohort(n_people,y,a,w,delta=1/250,eir=40,immune_thresh=0.01,duratio
 
     # Simulate people
     for person in range(n_people):
-        pmatrix, smatrix, imatrix, malaria, infections = simulate_person(y,a,w,fever_arr,eir=eir, delta=delta,immune_thresh=immune_thresh,duration=duration, meroz=meroz, timeToPeak=timeToPeak, maxParasitemia=maxParasitemia, pgone=pgone)
+        pmatrix, smatrix, imatrix, malaria, infections = simulate_person(y,a,w,fever_arr,eir=eir, delta=delta,immune_thresh=immune_thresh,duration=duration, meroz=meroz, timeToPeak=timeToPeak, maxParasitemia=maxParasitemia, pgone=pgone,power=power)
         all_parasites[person,:,:,:] = pmatrix
         all_immunity[person,:,:,:] = imatrix
         all_strains[person] = smatrix

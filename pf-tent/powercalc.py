@@ -166,7 +166,7 @@ def get_sens_spec(control, test, cutoff):
     return sens, spec
 
 
-def power_calc_1st2nd(y,a,w,experiments,eir=40,intervals=[10,50,100,500],cutoff=0.05,measured=True):
+def power_calc_1st2nd(y,a,w,experiments,eir=40,intervals=[10,50,100,500],cutoff=0.05,measured=True,power=0):
     '''
     Returns sensitivity & specificity for 10**x number of people.
     Test = Diff in parasite density at first vs. second exposure.
@@ -190,11 +190,14 @@ def power_calc_1st2nd(y,a,w,experiments,eir=40,intervals=[10,50,100,500],cutoff=
         control_pvalue = []
         test_pvalue = []
         for experiment in range(experiments):
-            all_parasites, all_immunity, all_strains, all_malaria, all_infections = tent.simulate_cohort(n_people,y,a,w,eir=eir)
+            all_parasites, all_immunity, all_strains, all_malaria, all_infections = tent.simulate_cohort(n_people,y,a,w,eir=eir,power=power)
             for l in [1,len(a)-1]:
                 control,test, n_control, n_test = get_max_exp1_exp2(all_parasites,all_infections,all_strains,all_malaria,y,a,l,measured=measured)
                 diff_control, diff_test = get_diff(control,test)
-                s,pvalue = st.mannwhitneyu(x=diff_control,y=diff_test)
+                try:
+                    s,pvalue = st.mannwhitneyu(x=diff_control,y=diff_test)
+                except ValueError:
+                    pvalue = 1
                 if l == 1:
                     control_pvalue.append(pvalue)
                     results['control']['diff_control'].extend(diff_control)
