@@ -24,7 +24,7 @@ if __name__ == '__main__':
     results_dict = {}
     intervals = [10,5,2,1,0.75,0.5,0.25]
     for importance in intervals:
-        w_other, n_other = pc.get_weights(importance)
+        w_other, n_other = pc.get_nLoci(importance)
         a = list(np.repeat(10,2+n_other+1))
         w = [0,0]
         i_w = list(np.repeat(w_other, n_other))

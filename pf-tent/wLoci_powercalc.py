@@ -22,7 +22,7 @@ if __name__ == '__main__':
 
     results_df = pd.DataFrame()
     results_dict = {}
-    intervals = [0.99,1/2,1/3,1/5,1/10,1/100,1/1000]
+    intervals = [99/100,3/4,1/2,1/3,1/5,1/10,1/20,1/100,1/1000]
     for w_loci in intervals:
         a = list(np.repeat(10,7))
         w = [0,0]

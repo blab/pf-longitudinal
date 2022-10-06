@@ -226,7 +226,7 @@ def get_weights(imp,n_other=4):
     wl = imp/(imp+n_other)
     return wo, wl
 
-def get_weights(imp, wl=0.2):
+def get_nLoci(imp, wl=0.2):
     '''
     Returns n of other Loci if importance changes & constant weight.
     '''
