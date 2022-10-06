@@ -22,23 +22,23 @@ if __name__ == '__main__':
 
     results_df = pd.DataFrame()
     results_dict = {}
-    intervals = [10,5,2,1,0.5,0.2,0.1]
+    intervals = [10,5,2,1,0.75,0.5,0.25]
     for importance in intervals:
-        w_other, w_test = pc.get_weights(importance)
-        a = list(np.repeat(10,7))
+        w_other, n_other = pc.get_weights(importance)
+        a = list(np.repeat(10,2+n_other+1))
         w = [0,0]
-        i_w = list(np.repeat(w_other, 4))
+        i_w = list(np.repeat(w_other, n_other))
         w.extend(i_w)
-        w.append(w_test)
+        w.append(0.2)
         print('loci_importance: ' + str(importance))
         df,dic = pc.power_calc_1st2nd(args.years,a,w,args.experiments,measured=args.measured)
         df['loci_importance'] = importance
-        df['weight'] = w_test
+        df['n_immloci'] = n_other+1
         results_df = results_df.append(df,ignore_index=True)
         results_dict[importance] = dic
-    results_dict['variable'] = 'loci_importance;weight'
+    results_dict['variable'] = 'loci_importance;n_immloci'
     for d in [results_df, results_dict]:
-        d['n_immloci'] = 5
+        d['weight'] = 0.2
         d['n_alleles'] = 10
         d['n_ctrlAlleles'] = 10
         d['measured'] = args.measured

@@ -220,8 +220,16 @@ def power_calc_1st2nd(y,a,w,experiments,eir=40,intervals=[10,50,100,500],cutoff=
 
 def get_weights(imp,n_other=4):
     '''
-    Returns weight of other loci & weight of test loci. 
+    Returns weight of other loci & weight of test loci.
     '''
     wo = 1/(imp+n_other)
     wl = imp/(imp+n_other)
     return wo, wl
+
+def get_weights(imp, wl=0.2):
+    '''
+    Returns n of other Loci if importance changes & constant weight.
+    '''
+    wo = wl/imp
+    n_other = (1 - wl)/wo
+    return wo, n_other
