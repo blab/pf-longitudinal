@@ -1,5 +1,5 @@
 '''
-Performs power calculations for number of loci.
+Performs power calculations for transmission intensity
 '''
 
 import argparse
@@ -22,20 +22,23 @@ if __name__ == '__main__':
 
     results_df = pd.DataFrame()
     results_dict = {}
-    intervals = [1,5,10,25,50,100]
-    for n_loci in intervals:
-        a = list(np.repeat(10,2+n_loci))
+    intervals = [10,5,2,1,0.75,0.5,0.25]
+    for importance in intervals:
+        w_other, n_other = pc.get_nLoci(importance)
+        a = list(np.repeat(10,2+n_other+1))
         w = [0,0]
-        i_w = list(np.repeat(1/n_loci,n_loci))
+        i_w = list(np.repeat(w_other, n_other))
         w.extend(i_w)
-        print('n_loci: ' + str(n_loci))
-        df, dic = pc.power_calc_1st2nd(args.years,a,w,args.experiments,measured=args.measured)
-        df['n_immloci'] = n_loci
-        df['weight'] = 1/n_loci
+        w.append(0.2)
+        print('loci_importance: ' + str(importance))
+        df,dic = pc.power_calc_1st2nd(args.years,a,w,args.experiments,measured=args.measured)
+        df['loci_importance'] = importance
+        df['n_immloci'] = n_other+1
         results_df = results_df.append(df,ignore_index=True)
-        results_dict[n_loci] = dic
-    results_dict['variable'] = 'n_immLoci;weight'
+        results_dict[importance] = dic
+    results_dict['variable'] = 'loci_importance;n_immloci'
     for d in [results_df, results_dict]:
+        d['weight'] = 0.2
         d['n_alleles'] = 10
         d['n_ctrlAlleles'] = 10
         d['measured'] = args.measured
@@ -43,7 +46,6 @@ if __name__ == '__main__':
         d['years'] = args.years
         d['eir'] = 40
         d['allele_freq'] = 'uniform'
-        d['loci_importance'] = 'equal'
     with open(args.output+'.tsv', 'w') as file:
         results_df.to_csv(file,sep="\t",index=False)
     with open(args.output+'.json', 'w') as file:
