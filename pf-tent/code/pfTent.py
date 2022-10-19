@@ -25,8 +25,8 @@ def load_data():
     '''
     Loads data used in the model
     '''
-    fever = np.load("../data/fever.npy")
-    breaks = np.load("../data/breaks.npy")
+    fever = np.load("data/fever.npy")
+    breaks = np.load("data/breaks.npy")
     return fever, breaks
 
 def get_fever_arr(eir,fever,breaks):
