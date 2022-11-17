@@ -12,7 +12,7 @@ rule simulate:
     input:
         params = 'output/params/params_{num}.npy'
     output:
-        outcomes = 'outcome/outcomes/outcomes_{num}.npy'
+        outcomes = 'output/outcomes/outcomes_{num}.npy'
     conda:
         'config/antigens.yaml'
     shell:
