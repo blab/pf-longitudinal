@@ -12,10 +12,12 @@ Variables:
   duration = 500, max infection length
   meroz = 0.01, initial parasites/uL, not log scale
   timeToPeak = 10, time from first parasitemia to peak
-  maxParasitemia = 6, maximum parasitemia on log scale
+  maxParasitemia = 5.2, maximum parasitemia on log scale
+
+  power = 0, skew of allele frequencies
 
   pgone = -3, threshold for parasites being gonelog10 scale
-  immune_thresh = 0.01, threshold at which you start gaining immunity
+  immune_thresh = 0.001, threshold at which you start gaining immunity
 
   w = vector for weighting immune impact, should all add to one. Length is len(a) + 1
   a = vector containing # of alleles at each loci.
@@ -28,8 +30,8 @@ def load_data():
     '''
     Loads data used in the model
     '''
-    fever = np.load("../data/fever.npy")
-    breaks = np.load("../data/breaks.npy")
+    fever = np.load("data/fever.npy")
+    breaks = np.load("data/breaks.npy")
     return fever, breaks
 
 def get_fever_arr(eir,fever,breaks):
@@ -277,7 +279,7 @@ def simulate_person(y,a,w,fever_arr, eir=40, t12=100,immune_thresh=0.01,duration
     return pmatrix, smatrix, imatrix, malaria, infectmatrix
 
 
-def simulate_cohort(n_people,y,a,w,t12=100,eir=40,immune_thresh=0.01,duration=500,meroz=0.1,timeToPeak=10,maxParasitemia=6,pgone=-3,power=0,xh=0.5,b=-1):
+def simulate_cohort(n_people,y,a,w,t12=100,eir=40,immune_thresh=0.001,duration=500,meroz=0.01,timeToPeak=10,maxParasitemia=6,pgone=-3,power=0,xh=0.5,b=-1):
     '''
     Simulates an entire cohort of individuals.
 

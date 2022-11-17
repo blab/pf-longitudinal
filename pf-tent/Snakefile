@@ -1,0 +1,23 @@
+'''
+Generating smoothed frequencies for ama1 dynamics.
+'''
+files=range(1,101)
+
+rule all:
+    input:
+        outcomes = expand('output/outcomes/outcomes_{num}.npy',num=files)
+
+rule simulate:
+    message: "Simulating range of params"
+    input:
+        params = 'output/params/params_{num}.npy'
+    output:
+        outcomes = 'outcome/outcomes/outcomes_{num}.npy'
+    conda:
+        'config/antigens.yaml'
+    shell:
+        '''
+        python code/simulateParams.py \
+            --metadata {input.params} \
+            --outputdir {output.outcomes}
+        '''

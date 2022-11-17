@@ -1,0 +1,9 @@
+name: nextstrain
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - scipy
+  - numpy
+  - matplotlib
+  - python
