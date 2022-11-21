@@ -3,9 +3,51 @@ Code for power calculations on longitudinal trajectories
 '''
 
 import numpy as np
-import pfTent as tent
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+
+def check_moi(y,sM):
+    '''
+    Returns MOI every 30 days:
+        y = years
+        sM = matrix tracking strains across time.
+    '''
+    mois = []
+    for t in range(0,y*365,30):
+        moi = np.sign(sM[:,t]).sum()
+        mois.append(int(moi))
+    return mois
+
+def check_parasitemia(y,pM,detect_thresh=0.001):
+    '''
+    Returns parasite density every 30 days, and the percent of times (every 30
+    days) over the course of the study that someone had parasites.
+    '''
+    pdensity = []
+    ppositivity = []
+    for t in range(0,y*365,30):
+        p = pM[0,:,t].sum()
+        pdensity.append(p)
+        if p > detect_thresh:
+            ppositivity.append(1)
+        else:
+            ppositivity.append(0)
+    perpos = np.average(ppositivity)
+    return pdensity, perpos
+
+def check_infection_length(sM,y, malaria):
+    lengths = []
+    infections = len(sM)
+    for i in range(infections):
+        counter = 0
+        for j in range(y*365):
+            if sM[i,j] > 0:
+                counter += 1
+                if j in malaria:
+                    counter = 0
+        if counter > 0:
+            lengths.append(counter)
+    return lengths
 
 def overall_outcomes(all_parasites,all_strains,all_malaria,n_people,y):
     '''
@@ -19,9 +61,9 @@ def overall_outcomes(all_parasites,all_strains,all_malaria,n_people,y):
 
     for person in range(n_people):
 
-        Parasitemia, perPositivity = tent.check_parasitemia(3,all_parasites[person,...])
-        MOI = tent.check_moi(3,all_strains[person])
-        infectionlengths = tent.check_infection_length(all_strains[person],y,all_malaria[person])
+        Parasitemia, perPositivity = check_parasitemia(3,all_parasites[person,...])
+        MOI = check_moi(3,all_strains[person])
+        infectionlengths = check_infection_length(all_strains[person],y,all_malaria[person])
         malaria_per_year = len(all_malaria[person])/y
 
         all_parasite_density.extend(Parasitemia)
