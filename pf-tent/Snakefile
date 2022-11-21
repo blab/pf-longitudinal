@@ -5,7 +5,8 @@ files=range(1,101)
 
 rule all:
     input:
-        outcomes = expand('output/outcomes/outcomes_{num}.npy',num=files)
+        params = 'output/params.npy',
+        sims = 'output/sims.npy'
 
 rule simulate:
     message: "Simulating range of params"
@@ -18,6 +19,23 @@ rule simulate:
     shell:
         '''
         python code/simulateParams.py \
-            --metadata {input.params} \
-            --outputdir {output.outcomes}
+            --input {input.params} \
+            --output {output.outcomes}
+        '''
+
+rule concat:
+    message: "Combining results of the param sim"
+    input:
+        params = expand('output/params/params_{num}.npy',num=files),
+        outcomes = expand('output/outcomes/outcomes_{num}.npy',num=files)
+    output:
+        params = 'output/params.npy',
+        outcomes = 'output/sims.npy'
+    shell:
+        '''
+        python code/concatSims.py \
+            --in-params {input.params} \
+            --in-sims {input.outcomes} \
+            --out-params {output.params} \
+            --out-sims {output.outcomes}
         '''

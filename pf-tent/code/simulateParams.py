@@ -70,8 +70,8 @@ if __name__ == '__main__':
     outcomes = np.empty((13,args.people,len(params)))
     for row in range(len(params)):
         t12 = params[row,0]
-        xh = params[row,1]
-        b = params[row,2]
+        b = params[row,1]
+        xh = params[row,2]
         duration = params[row,3]
         maxP = params[row,4]
         alleles = params[row,5]
