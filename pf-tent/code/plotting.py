@@ -72,6 +72,7 @@ def graph_trajectories(n,all_parasites,output=None):
     '''
     n_people = len(all_parasites)
     spacing = int(n_people/n)
+    y = int(all_parasites.shape[-1]/365)
 
     height = 4*n
     fig, ax = plt.subplots(nrows=n,tight_layout=True, figsize=(14,height))
@@ -123,7 +124,7 @@ def graph_individual(a,locus,pmatrix,imatrix,output=None):
     if output:
         fig.savefig(output)
 
-def check_outcomes(a,locus,all_parasites,all_strains,all_malaria,output=None):
+def check_outcomes(a,locus,all_parasites,all_immunity,all_strains,all_malaria,output=None):
     '''
     Produces graphs for simulations.
     '''

@@ -1,0 +1,10 @@
+name: antigens
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - scipy
+  - numpy
+  - matplotlib
+  - snakemake
+  - python
