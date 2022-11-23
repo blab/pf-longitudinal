@@ -15,7 +15,7 @@ def check_moi(y,sM):
     mois = []
     for t in range(0,y*365,30):
         moi = np.sign(sM[:,t]).sum()
-        mois.append(int(moi))
+        mois.append(moi)
     return mois
 
 def check_parasitemia(y,pM,detect_thresh=0.001):
@@ -35,18 +35,8 @@ def check_parasitemia(y,pM,detect_thresh=0.001):
     perpos = np.average(ppositivity)
     return pdensity, perpos
 
-def check_infection_length(sM,y, malaria):
-    lengths = []
-    infections = len(sM)
-    for i in range(infections):
-        counter = 0
-        for j in range(y*365):
-            if sM[i,j] > 0:
-                counter += 1
-                if j in malaria:
-                    counter = 0
-        if counter > 0:
-            lengths.append(counter)
+def check_infection_length(sM):
+    lengths = np.sum(np.sign(sM),axis=1)
     return lengths
 
 def overall_outcomes(all_parasites,all_strains,all_malaria,n_people,y):

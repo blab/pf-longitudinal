@@ -6,6 +6,7 @@ Variables:
  - a, vector whose length corresponds to number of loci. Each entry corresponds
  to number of alleles at that loci.
  - w, vector weighting immunity at each loci. Should sum to 1.
+ - power = 1, skew of allele frequency
  - meroz = 0.8, scale for mz AKA rough median
  - mshape = 1, variance of lognorm distribution for starting number of merozoites
  - growthrate = 0.6, average growthrate
@@ -35,7 +36,7 @@ def simulate_bites(y,eir):
     bites = np.ceil(trimmed).astype(int)
     return bites
 
-def simulate_genotypes(n,a):
+def simulate_genotypes(n,a,power=1):
     '''
     n = number of strains to simulate
     a = vector whose length corresponds to number of loci.
@@ -48,29 +49,28 @@ def simulate_genotypes(n,a):
     '''
     length = len(a)
     M = np.empty((length,n),dtype=int)
-    for i in range(n):
-        floats = np.random.rand(length) # Currently only simulates things from uniform distribution
-        genotype = np.ceil(floats*a)-1 # Current only simulates things ffrom uniform distribution
-        M[:,i] = genotype
+    floats = np.random.power(power,(length,n))
+    genotype = np.ceil(floats*np.repeat(a,n).reshape(length,n))-1
+    M[:] = genotype
     return M
 
-def get_mz(meroz=0.8,mshape=1): ### Work here
+def get_mz(size,meroz=0.8,mshape=1):
     '''
     Generates starting number of merozoites from a lognormal distribution.
     Values from here: https://www.science.org/doi/10.1126/scitranslmed.aag2490
     '''
-    mz = st.lognorm.rvs(s=mshape,scale=meroz)
+    mz = st.lognorm.rvs(s=mshape,scale=meroz,size=size)
     return mz
 
-def get_r(growthrate=0.6,rscale=0.1):
+def get_r(size,growthrate=0.6,rscale=0.1):
     '''
     Generates r from normal distribution.
     Values from here: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7198127/
     '''
-    r = st.norm.rvs(loc = growthrate, scale=rscale)
+    r = st.norm.rvs(loc = growthrate, scale=rscale,size=size)
     return r
 
-def simulate_params(n,meroz,growthrate,mshape=mshape,rscale=rscale):
+def simulate_params(n,meroz,growthrate,mshape,rscale):
     '''
     Simulates mz and growth rate for strains.
     Returns 2 x n matrix.
@@ -81,9 +81,8 @@ def simulate_params(n,meroz,growthrate,mshape=mshape,rscale=rscale):
         growthrate = average starting growthrate
     '''
     M = np.zeros((2,n))
-    for i in np.arange(n):
-        M[0,i] = get_mz(meroz,mshape)
-        M[1,i] = get_r(growthrate,rscale)
+    M[0,:] = get_mz(n,meroz,mshape)
+    M[1,:] = get_r(n,growthrate,rscale)
     return M
 
 def create_allele_matrix(a,y):
@@ -116,10 +115,10 @@ def add_infection(t,j,mz,gtype,sM,pM):
         pM = matrix tracking parasitemia by allele
     '''
     sM[j,t] = mz
-    for locus, allele in enumerate(gtype): # Might be able to speed up with vectorization here
-        pM[locus, allele,t] = mz
+    n_loci = len(gtype)
+    pM[np.arange(n_loci),(gtype),t] += mz
 
-def update_immunity(t,locus,allele,pM,iM,tHalf): # Use with np.vectorize()
+def update_immunity(t,pM,iM,gamma): # Use with np.vectorize()
     '''
     Immunity exponentially decays if parasite not present.
 
@@ -131,26 +130,19 @@ def update_immunity(t,locus,allele,pM,iM,tHalf): # Use with np.vectorize()
         iM = matarix tracking immunity by allele
         tHalf = half-life of immunity
     '''
-    gamma = 0.693/tHalf
     if t >= 14:
-        if pM[locus,allele,t-14] > 0:
-            iM[locus,allele,t] = 1
-        elif iM[locus,allele,t-1] != 0:
-            iM[locus,allele,t] = iM[locus,allele,t-1]*np.exp(-gamma)
+        iM[:,:,t] = iM[:,:,t-1]*np.exp(-gamma)
+        iM[:,:,t][pM[:,:,t-14]>0] = 1
 
-def get_strain_immunity(gtype,i2,w):
+def get_strain_immunity(gtype,i2,w,rows):
     '''
     Returns immunity to strain.
     gtype = genotype of strain
     i2 = immune matrix at t of interest.
     w = vector weighting immunity by allele
     '''
-    n_loci = len(gtype)
-    cross = np.empty(n_loci)
-    for i in np.arange(n_loci): ## Could try to vectorize; might speed up.
-        allele = gtype[i]
-        cross[i] = i2[i,allele]
-    imm = (cross*np.asarray(w)).sum()
+    crossed = i2[rows,gtype]
+    imm = (crossed*np.asarray(w)).sum(axis=1)
     return imm
 
 def modulate_growth_rate(imm,r0,rend=-0.05,xh=0.3, b=-2):
@@ -160,14 +152,22 @@ def modulate_growth_rate(imm,r0,rend=-0.05,xh=0.3, b=-2):
     xh = inflection point for % immunity change
     b = intensity of immune effect
     '''
-    if imm == 0:
-        return r0
-    else:
-        c = np.tan(np.pi/2*xh)**b
-        r = ((r0-rend)/(c/np.tan(np.pi/2*imm)**b+1)) + rend
+    c = np.tan(np.pi/2*xh)**b
+    r = ((r0-rend)/(c/np.tan(np.pi/2*imm)**b+1)) + rend
     return r
 
-def update_parasitemia(t,j,w,gM,iM,rV,sM,pM,k = 5*10**5,rend=-0.05,xh=0.3,b=-2,pgone=0.001): # vectorize across J
+def get_parasitemia(p0,r,k = 5*10**5,pgone=0.001):
+    '''
+    Returns parasitemia given growth rate & carrying capacity.
+    '''
+    rpos = k/(1+((k-p0)/p0)*np.exp(-r))
+    rneg = p0*np.exp(r)
+    p = rneg
+    p[r>0] = rpos[r>0]
+    p[p<pgone]= 0
+    return p
+
+def update_parasitemia(t,active,w,gM,iM,rV,sM,pM,k = 5*10**5,rend=-0.05,xh=0.3,b=-2,pgone=0.001):
     '''
     Updates parasitemia for each strain and allele by bite number.
 
@@ -186,27 +186,24 @@ def update_parasitemia(t,j,w,gM,iM,rV,sM,pM,k = 5*10**5,rend=-0.05,xh=0.3,b=-2,p
         b = param scaling immunity's impact on growth rate
         pgone = threshold below which infection goes to zero
     '''
-    done = set()
-    imm = get_strain_immunity(gM[:,j],iM[:,:,t-1],w)
-    r = modulate_growth_rate(imm,rV[j],rend,xh,b)
+    active = np.asarray(list(active),dtype=int)
+    gtype = gM[:,active].T
+    n_strains,n_loci = gtype.shape
+    rows = np.broadcast_to(np.arange(n_loci),(n_strains,n_loci))
+    imm = get_strain_immunity(gtype,iM[:,:,t-1],w,rows)
+    r = modulate_growth_rate(imm,rV[active],rend,xh,b)
 
-    if sM[j,t] == 0:
-        p0 = sM[j,t-1]
-        if p0 != 0:
-            if r > 0:
-                p = k/(1+((k-p0)/p0)*np.exp(-r))
-            else:
-                p = p0*np.exp(r)
-                if p < pgone:
-                    p = 0
-                    done.add(j)
-        else:
-            p = 0
+    p0 = sM[active,t-1]
+    p = get_parasitemia(p0,r,k=k,pgone=pgone)
+    sM[active,t] = p
+    loci,alleles = iM[:,:,t].shape
+    zeroth = np.zeros((n_loci,alleles,n_strains))
 
-        sM[j,t] = p
-
-        for loci, allele in enumerate(gM[:,j]): # Might be able to speed up with vectorization here
-            pM[loci, allele,t] += p
+    strained = np.broadcast_to(np.arange(n_strains),(n_loci,n_strains)).T
+    zeroth[rows,gtype,strained] = np.broadcast_to(p,(n_loci,n_strains)).T
+    psum = np.sum(zeroth,axis=2)
+    pM[:,:,t] = psum
+    done = set(active[p==0])
     return done
 
 def get_fever_threshold(arr,t):
@@ -253,7 +250,7 @@ def get_fever_arr(eir,fever,breaks):
     arr = np.stack((age,10**pdens),axis=1)
     return arr
 
-def simulate_person(y,eir,a,w,meroz=0.8,growthrate=1.2,mshape=1,rscale=0.1,tHalf=100,rend=-0.05,xh=0.3,b=-2,k=5*10**5,pgone=0.001):
+def simulate_person(y,eir,a,w,fever_arr,meroz=0.8,growthrate=1.2,mshape=1,rscale=0.1,tHalf=100,rend=-0.05,xh=0.3,b=-2,k=5*10**5,pgone=0.001,power=1):
     '''
     Runs simulation for one person. Returns matrix tracking parasitemia by allele,
     matrix tracking immunity by allele, matrix tracking parasitemia by strain, and
@@ -277,6 +274,7 @@ def simulate_person(y,eir,a,w,meroz=0.8,growthrate=1.2,mshape=1,rscale=0.1,tHalf
     n = len(bites)
     gtypes = simulate_genotypes(n,a)
     params = simulate_params(n,meroz,growthrate,mshape=mshape,rscale=rscale)
+    gamma = 0.693/tHalf
 
     # Creates objects to record
     pM = create_allele_matrix(a,y)
@@ -296,25 +294,22 @@ def simulate_person(y,eir,a,w,meroz=0.8,growthrate=1.2,mshape=1,rscale=0.1,tHalf
 
     ## Day 1+
     for t in np.arange(1,y*365):
+        if active:
+            drop = update_parasitemia(t=t,active=active,w=w,gM=gtypes,iM=iM,rV=params[1,:],sM=sM,pM=pM,k=k,rend=rend,xh=xh,b=b,pgone=pgone)
+            if drop:
+                active = active.difference(drop)
         if t in bites:
             if not len(malaria) > 0 or t - malaria[-1] > 14:
                 locs = np.where(bites == t)
                 for j in locs[0]:
                     add_infection(t,j,params[0,j],gtypes[:,j],sM,pM)
                     active.add(j)
-        if active:
-            for j in active:
-                drop = update_parasitemia(t=t,j=j,w=w,gM=gtypes,iM=iM,rV=params[1,:],sM=sM,pM=pM,k=k,rend=rend,xh=xh,b=b,pgone=pgone)
-                if drop:
-                    active = active.difference(drop)
         thresh = get_fever_threshold(fever_arr, t)
         malaria,active = treat_malaria(t,thresh,pM,sM,malaria,active)
-        for locus in np.arange(len(a)):
-            for allele in np.arange(max(a)):
-                update_immunity(t=t,locus=locus,allele=allele,pM=pM,iM=iM,tHalf=tHalf)
+        update_immunity(t=t,pM=pM,iM=iM,gamma=gamma)
     return pM, iM, sM, malaria
 
-def simulate_cohort(n_people,y,eir,a,w,meroz=0.8,growthrate=1.2,mshape=1,rscale=0.1,tHalf=100,rend=-0.05,xh=0.3,b=-2,k=5*10**5,pgone=0.001):
+def simulate_cohort(n_people,y,eir,a,w,meroz=0.8,growthrate=1.2,mshape=1,rscale=0.1,tHalf=100,rend=-0.05,xh=0.3,b=-2,k=5*10**5,pgone=0.001,power=1):
     '''
     Simulates an entire cohort of individuals.
 
@@ -341,7 +336,7 @@ def simulate_cohort(n_people,y,eir,a,w,meroz=0.8,growthrate=1.2,mshape=1,rscale=
 
     # Simulate people
     for person in range(n_people):
-        pmatrix, imatrix, smatrix, malaria = simulate_person(y,eir,a,w,meroz=meroz,growthrate=growthrate,mshape=mshape,rscale=rscale,tHalf=tHalf,rend=rend,xh=xh,b=b,k=k,pgone=pgone)
+        pmatrix, imatrix, smatrix, malaria = simulate_person(y,eir,a,w,fever_arr,meroz=meroz,growthrate=growthrate,mshape=mshape,rscale=rscale,tHalf=tHalf,rend=rend,xh=xh,b=b,k=k,pgone=pgone,power=power)
         all_parasites[person,:,:,:] = pmatrix
         all_immunity[person,:,:,:] = imatrix
         all_strains[person] = smatrix

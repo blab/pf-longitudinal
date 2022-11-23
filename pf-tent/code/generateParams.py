@@ -13,23 +13,26 @@ if __name__ == '__main__':
     )
 
     parser.add_argument('--outputdir', required=True, help='Path to output directory')
+    parser.add_argument('--lower', required=True,type=float, nargs='+', help='list of lower bound of params')
+    parser.add_argument('--upper', required=True,type=float, nargs='+', help='list of upper bound of params')
+    parser.add_argument('--ints', required=True,type=int, nargs='+', help='list of params that should be integers')
     args = parser.parse_args()
 
-    sampler = qmc.LatinHypercube(d=9)
-    sample = sampler.random(n=10000)
+    dims = len(args.lower)
+    sampler = qmc.LatinHypercube(d=dims)
+    sample = sampler.random(n=10) # Edited
 
-    l_bounds = [25,-4,0.1,100,4.5,2,1,10,1]
-    u_bounds = [1000,-0.9,0.9,1001,6.5,51,3,250,101]
+    l_bounds = args.lower
+    u_bounds = args.upper
 
     scaled = qmc.scale(sample,l_bounds,u_bounds)
 
-    scaled[:,3] = np.floor(scaled[:,3])
-    scaled[:,5] = np.floor(scaled[:,5])
-    scaled[:,8] = np.floor(scaled[:,8])
+    for integer in args.ints:
+        scaled[:,integer] = np.floor(scaled[:,integer])
 
     counter = 0
-    for i in range(1,101):
+    for i in range(1,3): #Edited
         with open(args.outputdir+'params_' + str(i) + '.npy', 'wb') as f:
-            arr = scaled[counter:counter+100,:]
+            arr = scaled[counter:counter+5,:] # Edited
             np.save(f,arr)
-        counter += 100
+        counter += 5 # Edited
