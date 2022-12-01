@@ -225,7 +225,7 @@ def treat_malaria(t, threshhold, pM, sM, m,a):
     if pM[0,:,t-1].sum(axis=0) > threshhold:
         pM[:,:,t] = 0
         sM[:,t] = 0
-        m.append(t)
+        m.append(t-1)
         a = set()
     return m,a
 
