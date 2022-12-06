@@ -150,7 +150,7 @@ if __name__ == '__main__':
         print('simulation: ' + str(row))
         alleles = params[row,0]
         nloci = params[row,1]
-        eir = params[row,2]
+        beir = params[row,2]
         meroz = params[row,3]
         mshape = params[row,4]
         growthrate = params[row,5]
@@ -161,6 +161,8 @@ if __name__ == '__main__':
         b = params[row,10]
         k = params[row,11]
         power = params[row,12]
+        limm = params[row,13]
+        eir = beir*limm
         a,w = create_weight_alleles(nloci,alleles)
         all_parasites, all_immunity, all_strains, all_malaria = mech.simulate_cohort(args.people,args.years,eir,a,w,meroz=meroz,growthrate=growthrate,mshape=mshape,rscale=rscale,tHalf=tHalf,rend=rend,xh=xh,b=b,k=k,power=power)
         for person in range(args.people):

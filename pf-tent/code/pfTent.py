@@ -13,6 +13,7 @@ Variables:
   meroz = 0.01, initial parasites/uL, not log scale
   timeToPeak = 10, time from first parasitemia to peak
   maxParasitemia = 5.2, maximum parasitemia on log scale
+  maxPv = 0.25, variance in maximum parasitemia
 
   power = 0, skew of allele frequencies
 
@@ -82,7 +83,7 @@ def simulate_strains(n,a,power=0):
     M[:] = genotype
     return M
 
-def simulate_params(n,duration, meroz, timeToPeak, maxParasitemia):
+def simulate_params(n,duration, meroz, timeToPeak, maxParasitemia,maxPv):
     '''
     Generates the duration of infection from a normal distribution.
     Generates starting number of merozoites from a lognormal distribution.
@@ -95,7 +96,7 @@ def simulate_params(n,duration, meroz, timeToPeak, maxParasitemia):
     dur = np.rint(st.norm.rvs(loc=duration,scale=20,size=n))
     mz = st.lognorm.rvs(s=.5,scale=meroz,size=n)
     peaktime = np.rint(st.norm.rvs(loc=timeToPeak, scale=3,size=n))
-    pmax = st.norm.rvs(loc=maxParasitemia,scale=0.25,size=n)
+    pmax = st.norm.rvs(loc=maxParasitemia,scale=maxPv,size=n)
     M[0,:] = dur
     M[1,:] = mz
     M[2,:] = peaktime
@@ -230,7 +231,7 @@ def treat_as_needed(threshhold, pM, sM, t, m):
         m.append(t)
     return m
 
-def simulate_person(y,a,w,fever_arr, eir=40, t12=100,immune_thresh=0.01,duration = 500, meroz = .01, timeToPeak = 10, maxParasitemia = 6, pgone=-3,power=0,xh=0.5,b=-1):
+def simulate_person(y,a,w,fever_arr, eir=40, t12=100,immune_thresh=0.01,duration = 500, meroz = .01, timeToPeak = 10, maxParasitemia = 6, maxPv = 0.25, pgone=-3,power=0,xh=0.5,b=-1):
     '''
     Runs simulation for one person.
     Returns:
@@ -245,7 +246,7 @@ def simulate_person(y,a,w,fever_arr, eir=40, t12=100,immune_thresh=0.01,duration
     bites = simulate_bites(y,eir)
     n_bites = len(bites)
     strains = simulate_strains(n_bites,a,power)
-    params_matrix = simulate_params(n_bites,duration,meroz,timeToPeak,maxParasitemia)
+    params_matrix = simulate_params(n_bites,duration,meroz,timeToPeak,maxParasitemia,maxPv)
     pmatrix = create_allele_matrix(a, y)
     smatrix = create_strain_matrix(n_bites,y)
     imatrix = create_allele_matrix(a,y)
@@ -279,7 +280,7 @@ def simulate_person(y,a,w,fever_arr, eir=40, t12=100,immune_thresh=0.01,duration
     return pmatrix, smatrix, imatrix, malaria, infectmatrix
 
 
-def simulate_cohort(n_people,y,a,w,t12=100,eir=40,immune_thresh=0.001,duration=500,meroz=0.01,timeToPeak=10,maxParasitemia=6,pgone=-3,power=0,xh=0.5,b=-1):
+def simulate_cohort(n_people,y,a,w,t12=100,eir=40,immune_thresh=0.001,duration=500,meroz=0.01,timeToPeak=10,maxParasitemia=6,maxPv=0.25,pgone=-3,power=0,xh=0.5,b=-1):
     '''
     Simulates an entire cohort of individuals.
 
@@ -307,7 +308,7 @@ def simulate_cohort(n_people,y,a,w,t12=100,eir=40,immune_thresh=0.001,duration=5
 
     # Simulate people
     for person in range(n_people):
-        pmatrix, smatrix, imatrix, malaria, infections = simulate_person(y,a,w,fever_arr,eir=eir, t12=t12,immune_thresh=immune_thresh,duration=duration, meroz=meroz, timeToPeak=timeToPeak, maxParasitemia=maxParasitemia, pgone=pgone,power=power,xh=xh,b=b)
+        pmatrix, smatrix, imatrix, malaria, infections = simulate_person(y,a,w,fever_arr,eir=eir, t12=t12,immune_thresh=immune_thresh,duration=duration, meroz=meroz, timeToPeak=timeToPeak, maxParasitemia=maxParasitemia, maxPv = maxPv, pgone=pgone,power=power,xh=xh,b=b)
         all_parasites[person,:,:,:] = pmatrix
         all_immunity[person,:,:,:] = imatrix
         all_strains[person] = smatrix

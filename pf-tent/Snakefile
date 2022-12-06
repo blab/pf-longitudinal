@@ -5,8 +5,27 @@ files=range(1,101)
 
 rule all:
     input:
-        params = 'output/paramsMech.npy',
-        sims = 'output/simsMech.npy'
+        params = 'output/params.npy',
+        sims = 'output/sims.npy'
+
+#rule generate_mech:
+#    message: "Generating params to simulate under"
+#    params:
+#        lower = config["mech_lower"],
+#        upper = config["mech_upper"],
+#        ints = config["ints_mech"]
+#    output:
+#        dir = directory('output/mech_params/')
+#    conda:
+#        'config/antigens.yaml'
+#    shell:
+#        '''
+#        python code/generateParams.py \
+#            --lower {params.lower} \
+#            --upper {params.upper} \
+#            --ints {params.ints} \
+#            --outputdir {output.dir}
+#        '''
 
 rule simulate:
     message: "Simulating range of params"

@@ -5,6 +5,7 @@ Generates matrices of params to simulate under
 import argparse
 from scipy.stats import qmc
 import numpy as np
+import pathlib
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
@@ -20,7 +21,8 @@ if __name__ == '__main__':
 
     dims = len(args.lower)
     sampler = qmc.LatinHypercube(d=dims)
-    sample = sampler.random(n=10) # Edited
+    sample = sampler.random(n=10000)
+    #sample = sampler.random(n=10)
 
     l_bounds = args.lower
     u_bounds = args.upper
@@ -31,8 +33,15 @@ if __name__ == '__main__':
         scaled[:,integer] = np.floor(scaled[:,integer])
 
     counter = 0
-    for i in range(1,3): #Edited
+
+    path = pathlib.Path(args.outputdir)
+    path.mkdir(parents=True, exist_ok=True)
+
+    for i in range(1,101):
+    #for i in range(1,3):
         with open(args.outputdir+'params_' + str(i) + '.npy', 'wb') as f:
-            arr = scaled[counter:counter+5,:] # Edited
+            arr = scaled[counter:counter+100,:]
+            #arr = scaled[counter:counter+5,:]
             np.save(f,arr)
-        counter += 5 # Edited
+        counter += 100
+        #counter += 5
