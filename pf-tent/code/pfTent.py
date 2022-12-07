@@ -15,7 +15,7 @@ Variables:
   maxParasitemia = 5.2, maximum parasitemia on log scale
   maxPv = 0.25, variance in maximum parasitemia
 
-  power = 0, skew of allele frequencies
+  power = 1.3, skew of allele frequencies
 
   pgone = -3, threshold for parasites being gonelog10 scale
   immune_thresh = 0.001, threshold at which you start gaining immunity
@@ -62,7 +62,7 @@ def simulate_bites(y,eir):
     bites = np.ceil(trimmed).astype(int)
     return bites
 
-def simulate_strains(n,a,power=0):
+def simulate_strains(n,a,power=1.3):
     '''
     n = number of strains to simulate
     a = vector whose length corresponds to number of loci.
@@ -231,7 +231,7 @@ def treat_as_needed(threshhold, pM, sM, t, m):
         m.append(t)
     return m
 
-def simulate_person(y,a,w,fever_arr, eir=40, t12=100,immune_thresh=0.01,duration = 500, meroz = .01, timeToPeak = 10, maxParasitemia = 6, maxPv = 0.25, pgone=-3,power=0,xh=0.5,b=-1):
+def simulate_person(y,a,w,fever_arr, eir=40, t12=100,immune_thresh=0.01,duration = 500, meroz = .01, timeToPeak = 10, maxParasitemia = 6, maxPv = 0.25, pgone=-3,power=1.3,xh=0.5,b=-1):
     '''
     Runs simulation for one person.
     Returns:
@@ -280,7 +280,7 @@ def simulate_person(y,a,w,fever_arr, eir=40, t12=100,immune_thresh=0.01,duration
     return pmatrix, smatrix, imatrix, malaria, infectmatrix
 
 
-def simulate_cohort(n_people,y,a,w,t12=100,eir=40,immune_thresh=0.001,duration=500,meroz=0.01,timeToPeak=10,maxParasitemia=6,maxPv=0.25,pgone=-3,power=0,xh=0.5,b=-1):
+def simulate_cohort(n_people,y,a,w,t12=100,eir=40,immune_thresh=0.001,duration=500,meroz=0.01,timeToPeak=10,maxParasitemia=6,maxPv=0.25,pgone=-3,power=1.3,xh=0.5,b=-1):
     '''
     Simulates an entire cohort of individuals.
 

@@ -10,12 +10,12 @@ Variables:
  - meroz = 0.8, scale for mz AKA rough median
  - mshape = 1, variance of lognorm distribution for starting number of merozoites
  - growthrate = 0.6, average growthrate
- - rscale = 0.1, variance in growthrate
+ - rscale = 0.15, variance in growthrate
  - tHalf = 100, half-life for immunity
  - rend = final growth rate at full immunity
  - xh = inflection point for % immunity change
- - b = intensity of immune effect
- - k = 500,000, maximum parasitemia
+ - b = -1, intensity of immune effect
+ - k = 10^6, maximum parasitemia
  - pgone = 0.001, parasite gone threshold
 
 '''
@@ -62,7 +62,7 @@ def get_mz(size,meroz=0.8,mshape=1):
     mz = st.lognorm.rvs(s=mshape,scale=meroz,size=size)
     return mz
 
-def get_r(size,growthrate=0.6,rscale=0.1):
+def get_r(size,growthrate=0.6,rscale=0.15):
     '''
     Generates r from normal distribution.
     Values from here: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7198127/
@@ -145,7 +145,7 @@ def get_strain_immunity(gtype,i2,w,rows):
     imm = (crossed*np.asarray(w)).sum(axis=1)
     return imm
 
-def modulate_growth_rate(imm,r0,rend=-0.05,xh=0.3, b=-2):
+def modulate_growth_rate(imm,r0,rend=-0.05,xh=0.3, b=-1):
     '''
     Modulates growth rate based on immunity.
     rend = final growth rate at full immunity
@@ -156,7 +156,7 @@ def modulate_growth_rate(imm,r0,rend=-0.05,xh=0.3, b=-2):
     r = ((r0-rend)/(c/np.tan(np.pi/2*imm)**b+1)) + rend
     return r
 
-def get_parasitemia(p0,r,k = 5*10**5,pgone=0.001):
+def get_parasitemia(p0,r,k = 10**6,pgone=0.001):
     '''
     Returns parasitemia given growth rate & carrying capacity.
     '''
@@ -167,7 +167,7 @@ def get_parasitemia(p0,r,k = 5*10**5,pgone=0.001):
     p[p<pgone]= 0
     return p
 
-def update_parasitemia(t,active,w,gM,iM,rV,sM,pM,k = 5*10**5,rend=-0.05,xh=0.3,b=-2,pgone=0.001):
+def update_parasitemia(t,active,w,gM,iM,rV,sM,pM,k = 10**6,rend=-0.05,xh=0.3,b=-1,pgone=0.001):
     '''
     Updates parasitemia for each strain and allele by bite number.
 
@@ -250,7 +250,7 @@ def get_fever_arr(eir,fever,breaks):
     arr = np.stack((age,10**pdens),axis=1)
     return arr
 
-def simulate_person(y,eir,a,w,fever_arr,meroz=0.8,growthrate=1.2,mshape=1,rscale=0.1,tHalf=100,rend=-0.05,xh=0.3,b=-2,k=5*10**5,pgone=0.001,power=1):
+def simulate_person(y,eir,a,w,fever_arr,meroz=0.8,growthrate=1.2,mshape=1,rscale=0.15,tHalf=100,rend=-0.05,xh=0.3,b=-1,k=10**6,pgone=0.001,power=1.3):
     '''
     Runs simulation for one person. Returns matrix tracking parasitemia by allele,
     matrix tracking immunity by allele, matrix tracking parasitemia by strain, and
@@ -309,7 +309,7 @@ def simulate_person(y,eir,a,w,fever_arr,meroz=0.8,growthrate=1.2,mshape=1,rscale
         update_immunity(t=t,pM=pM,iM=iM,gamma=gamma)
     return pM, iM, sM, malaria
 
-def simulate_cohort(n_people,y,eir,a,w,meroz=0.8,growthrate=1.2,mshape=1,rscale=0.1,tHalf=100,rend=-0.05,xh=0.3,b=-2,k=5*10**5,pgone=0.001,power=1):
+def simulate_cohort(n_people,y,eir,a,w,meroz=0.8,growthrate=1.2,mshape=1,rscale=0.15,tHalf=100,rend=-0.05,xh=0.3,b=-1,k=10**6,pgone=0.001,power=1.3):
     '''
     Simulates an entire cohort of individuals.
 

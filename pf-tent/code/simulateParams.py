@@ -6,6 +6,7 @@ import argparse
 import numpy as np
 import pfTent as tent
 import plotting as pt
+import scipy
 
 def create_weight_alleles(loci, alleles):
     '''
@@ -93,7 +94,14 @@ def get_yearly_prevs(y,visits,pmatrix):
     lamps = [len(pden[pden>1]) for pden in pdens]
     micro = np.asarray(micros)/n_visits
     lamp = np.asarray(lamps)/n_visits
-    return micro,lamp
+    onlypos = [pden[pden!=0] for pden in pdens]
+    pos = [len(pden) for pden in onlypos]
+    meanpos = [np.mean(pden) for pden in onlypos]
+    return micro,lamp,pos, meanpos
+
+def get_symps(cases,pos):
+    symps = np.asarray(cases)/np.asarray(pos)
+    return symps
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
@@ -104,29 +112,28 @@ if __name__ == '__main__':
     parser.add_argument('--input', required=True, help='Path to input numpy file')
     parser.add_argument('--people', type=int, default=100, help='Number of people to simulate')
     parser.add_argument('--years', type=int, default=5, help='Number of years to simulate')
+    parser.add_argument('--sig',type=float, default=0.05, help='Significance level for regressions')
     parser.add_argument('--output', required=True, help='Path to output numpy file')
     args = parser.parse_args()
 
     with open(args.input, 'rb') as f:
         params = np.load(f)
 
-    n_outcomes = 15 + (3*args.years)
+    n_outcomes = 15 + (5*args.years)
     outcomes = np.empty((n_outcomes,args.people,len(params)))
     for row in range(len(params)):
         t12 = params[row,0]
-        b = params[row,1]
-        xh = params[row,2]
-        duration = params[row,3]
-        maxP = params[row,4]
-        alleles = params[row,5]
-        power = params[row,6]
-        beir = params[row,7]
-        nloci = params[row,8]
-        maxPv = params[row,9]
-        limm = params[row,10]
+        xh = params[row,1]
+        duration = params[row,2]
+        maxP = params[row,3]
+        alleles = params[row,4]
+        beir = params[row,5]
+        nloci = params[row,6]
+        maxPv = params[row,7]
+        limm = params[row,8]
         eir = limm*beir
         a,w = create_weight_alleles(nloci,alleles)
-        all_parasites, all_immunity, all_strains, all_malaria, all_infections = tent.simulate_cohort(args.people,args.years,a,w,t12=t12,eir=eir,duration=duration,maxParasitemia=maxP,maxPv=maxPv,power=power,xh=xh,b=b)
+        all_parasites, all_immunity, all_strains, all_malaria, all_infections = tent.simulate_cohort(args.people,args.years,a,w,t12=t12,eir=eir,duration=duration,maxParasitemia=maxP,maxPv=maxPv,xh=xh)
         for person in range(args.people):
             pmatrix = all_parasites[person,...]
             smatrix = all_strains[person]
@@ -160,41 +167,47 @@ if __name__ == '__main__':
                     if spacing > 0:
                         mean,lamp,micro = get_intermediate_density(visits, asymps,malaria,pmatrix)
                         outcomes[11,person,row] = mean
-                        outcomes[13,person,row] = micro
-                        outcomes[14,person,row] = lamp
+                        outcomes[12,person,row] = micro
+                        outcomes[13,person,row] = lamp
                     else:
                         outcomes[11,person,row] = None
+                        outcomes[12,person,row] = None
                         outcomes[13,person,row] = None
-                        outcomes[14,person,row] = None
                 else:
                     outcomes[10,person,row] = None
                     outcomes[11,person,row] = None
+                    outcomes[12,person,row] = None
                     outcomes[13,person,row] = None
-                    outcomes[14,person,row] = None
             else:
                 outcomes[8,person,row] = None
                 outcomes[10,person,row] = None
                 outcomes[11,person,row] = None
+                outcomes[12,person,row] = None
                 outcomes[13,person,row] = None
-                outcomes[14,person,row] = None
             if len(malaria):
                 outcomes[9,person,row] = malaria[-1]
             else:
                 outcomes[9,person,row] = None
 
             cases = get_yearly_cases(malaria,args.years)
-            outcomes[15:15+args.years,person,row] = cases
-            microY,lampY = get_yearly_prevs(args.years,visits,pmatrix)
-            outcomes[15+args.years:15+(args.years*2),person,row] = microY
-            outcomes[15+(args.years*2):,person,row] = lampY
-
-        intermediate = np.median(outcomes[11,:,row])
-        avg_cases = np.average(outcomes[7,:,row])
-        avg_pdensity = np.average(outcomes[0,:,row])
-        if (intermediate > 200) & (avg_cases < 20) & (avg_pdensity < 100):
-            outcomes[12,:,row] = 1
+            outcomes[14:14+args.years,person,row] = cases
+            microY,lampY,nPos,pDens = get_yearly_prevs(args.years,visits,pmatrix)
+            pSymp = get_symps(cases,nPos)
+            outcomes[14+args.years:14+(args.years*2),person,row] = microY
+            outcomes[14+(args.years*2):14+(args.years*3),person,row] = lampY
+            outcomes[14+(args.years*3):14+(args.years*4),person,row] = pDens
+            outcomes[14+(args.years*4):14+(args.years*5),person,row] = pSymp
+        y_c = outcomes[14+(args.years*4):14+(args.years*5),:,row].flatten()
+        y_p = outcomes[14+(args.years*3):14+(args.years*4),:,row].flatten()
+        x = np.broadcast_to(np.arange(1,6),(args.people,5)).T.flatten()
+        results_c = scipy.stats.linregress(x,y_c,alternative='less')
+        results_p = scipy.stats.linregress(x,y_p,alternative='less')
+        final_cases = np.mean(outcomes[-2,:,row])
+        ilength = np.mean(outcomes[3,:,row])
+        if results_c.pvalue < args.sig and results_p.pvalue < args.sig and final_cases > 0 and ilength > 10:
+            outcomes[-1,:,row] = 1
         else:
-            outcomes[12,:,row] = 0
+            outcomes[-1,:row] = 0
 
     with open(args.output, 'wb') as f:
         np.save(f,outcomes)

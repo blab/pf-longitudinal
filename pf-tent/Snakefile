@@ -6,7 +6,9 @@ files=range(1,101)
 rule all:
     input:
         params = 'output/params.npy',
-        sims = 'output/sims.npy'
+        sims = 'output/sims.npy',
+        paramsMech = 'output/paramsMech.npy',
+        simsMech = 'output/simsMech.npy'
 
 #rule generate_mech:
 #    message: "Generating params to simulate under"
