@@ -280,7 +280,7 @@ def simulate_person(y,a,w,fever_arr, eir=40, t12=100,immune_thresh=0.01,duration
     return pmatrix, smatrix, imatrix, malaria, infectmatrix
 
 
-def simulate_cohort(n_people,y,a,w,t12=100,eir=40,immune_thresh=0.001,duration=500,meroz=0.01,timeToPeak=10,maxParasitemia=6,maxPv=0.25,pgone=-3,power=1.3,xh=0.5,b=-1):
+def simulate_cohort(n_people,y,a,w,t12=100,eir=40,immune_thresh=0.001,duration=500,meroz=0.01,timeToPeak=10,maxParasitemia=6,maxPv=0.25,pgone=-3,power=1.3,xh=0.5,b=-1,limm=0.6):
     '''
     Simulates an entire cohort of individuals.
 
@@ -306,9 +306,10 @@ def simulate_cohort(n_people,y,a,w,t12=100,eir=40,immune_thresh=0.001,duration=5
     fever, breaks = load_data()
     fever_arr = get_fever_arr(eir,fever,breaks)
 
+    adjeir = limm*eir
     # Simulate people
     for person in range(n_people):
-        pmatrix, smatrix, imatrix, malaria, infections = simulate_person(y,a,w,fever_arr,eir=eir, t12=t12,immune_thresh=immune_thresh,duration=duration, meroz=meroz, timeToPeak=timeToPeak, maxParasitemia=maxParasitemia, maxPv = maxPv, pgone=pgone,power=power,xh=xh,b=b)
+        pmatrix, smatrix, imatrix, malaria, infections = simulate_person(y,a,w,fever_arr,eir=adjeir, t12=t12,immune_thresh=immune_thresh,duration=duration, meroz=meroz, timeToPeak=timeToPeak, maxParasitemia=maxParasitemia, maxPv = maxPv, pgone=pgone,power=power,xh=xh,b=b)
         all_parasites[person,:,:,:] = pmatrix
         all_immunity[person,:,:,:] = imatrix
         all_strains[person] = smatrix

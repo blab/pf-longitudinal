@@ -12,7 +12,6 @@ import argparse
 import numpy as np
 import pfMech as mech
 import plotting as pt
-import scipy
 
 def create_weight_alleles(loci, alleles):
     '''
@@ -118,7 +117,6 @@ if __name__ == '__main__':
     parser.add_argument('--input', required=True, help='Path to input numpy file')
     parser.add_argument('--people', type=int, default=100, help='Number of people to simulate')
     parser.add_argument('--years', type=int, default=5, help='Number of years to simulate')
-    parser.add_argument('--sig',type=float, default=0.05, help='Significance level for regressions')
     parser.add_argument('--output', required=True, help='Path to output numpy file')
     args = parser.parse_args()
 
@@ -130,15 +128,14 @@ if __name__ == '__main__':
         print('simulation: ' + str(row))
         alleles = params[row,0]
         nloci = params[row,1]
-        beir = params[row,2]
+        eir = params[row,2]
         growthrate = params[row,3]
         tHalf = params[row,4]
         rend = params[row,5]
         xh = params[row,6]
         limm = params[row,7]
-        eir = beir*limm
         a,w = create_weight_alleles(nloci,alleles)
-        all_parasites, all_immunity, all_strains, all_malaria = mech.simulate_cohort(args.people,args.years,eir,a,w,growthrate=growthrate, tHalf=tHalf,rend=rend,xh=xh)
+        all_parasites, all_immunity, all_strains, all_malaria = mech.simulate_cohort(args.people,args.years,eir,a,w,growthrate=growthrate, tHalf=tHalf,rend=rend,xh=xh,limm=limm)
         for person in range(args.people):
             pmatrix = all_parasites[person,...]
             smatrix = all_strains[person]
@@ -147,12 +144,12 @@ if __name__ == '__main__':
 
 
             Parasitemia, perPositivity = get_Parasitemia(pmatrix, visits)
-            outcomes[0,person,row] = np.median(Parasitemia)
-            outcomes[1,person,row] = np.mean(Parasitemia)
+            outcomes[0,person,row] = np.nanmedian(Parasitemia)
+            outcomes[1,person,row] = np.nanmean(Parasitemia)
 
             infectionlengths = pt.check_infection_length(smatrix)
-            outcomes[2,person,row] = np.median(infectionlengths)
-            outcomes[3,person,row] = np.mean(infectionlengths)
+            outcomes[2,person,row] = np.nanmedian(infectionlengths)
+            outcomes[3,person,row] = np.nanmean(infectionlengths)
 
             MOI = pt.check_moi(args.years,smatrix)
             outcomes[4,person,row] = np.median(MOI)
@@ -201,17 +198,8 @@ if __name__ == '__main__':
             outcomes[14+(args.years*2):14+(args.years*3),person,row] = lampY
             outcomes[14+(args.years*3):14+(args.years*4),person,row] = pDens
             outcomes[14+(args.years*4):14+(args.years*5),person,row] = pSymp
-        y_c = outcomes[14+(args.years*4):14+(args.years*5),:,row].flatten()
-        y_p = outcomes[14+(args.years*3):14+(args.years*4),:,row].flatten()
-        x = np.broadcast_to(np.arange(1,6),(args.people,5)).T.flatten()
-        results_c = scipy.stats.linregress(x,y_c,alternative='less')
-        results_p = scipy.stats.linregress(x,y_p,alternative='less')
-        final_cases = np.mean(outcomes[-2,:,row])
-        ilength = np.mean(outcomes[3,:,row])
-        if results_c.pvalue < args.sig and results_p.pvalue < args.sig and final_cases > 0 and ilength > 10:
-            outcomes[-1,:,row] = 1
-        else:
-            outcomes[-1,:row] = 0
+            symps = get_symps(len(malaria),len(Parasitemia))
+            outcomes[-1,person,row] = symps
 
     with open(args.output, 'wb') as f:
         np.save(f,outcomes)

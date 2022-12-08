@@ -309,7 +309,7 @@ def simulate_person(y,eir,a,w,fever_arr,meroz=0.8,growthrate=1.2,mshape=1,rscale
         update_immunity(t=t,pM=pM,iM=iM,gamma=gamma)
     return pM, iM, sM, malaria
 
-def simulate_cohort(n_people,y,eir,a,w,meroz=0.8,growthrate=1.2,mshape=1,rscale=0.15,tHalf=100,rend=-0.05,xh=0.3,b=-1,k=10**6,pgone=0.001,power=1.3):
+def simulate_cohort(n_people,y,eir,a,w,meroz=0.8,growthrate=1.2,mshape=1,rscale=0.15,tHalf=100,rend=-0.05,xh=0.3,b=-1,k=10**6,pgone=0.001,power=1.3,limm=0.6):
     '''
     Simulates an entire cohort of individuals.
 
@@ -334,9 +334,11 @@ def simulate_cohort(n_people,y,eir,a,w,meroz=0.8,growthrate=1.2,mshape=1,rscale=
     fever, breaks = load_data()
     fever_arr = get_fever_arr(eir,fever,breaks)
 
+    adjeir = limm*eir
+
     # Simulate people
     for person in range(n_people):
-        pmatrix, imatrix, smatrix, malaria = simulate_person(y,eir,a,w,fever_arr,meroz=meroz,growthrate=growthrate,mshape=mshape,rscale=rscale,tHalf=tHalf,rend=rend,xh=xh,b=b,k=k,pgone=pgone,power=power)
+        pmatrix, imatrix, smatrix, malaria = simulate_person(y,adjeir,a,w,fever_arr,meroz=meroz,growthrate=growthrate,mshape=mshape,rscale=rscale,tHalf=tHalf,rend=rend,xh=xh,b=b,k=k,pgone=pgone,power=power)
         all_parasites[person,:,:,:] = pmatrix
         all_immunity[person,:,:,:] = imatrix
         all_strains[person] = smatrix
