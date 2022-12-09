@@ -6,7 +6,28 @@ files=range(1,101)
 rule all:
     input:
         params = 'output/params.npy',
-        sims = 'output/sims.npy'
+        sims = 'output/sims.npy',
+        paramsMech = 'output/paramsMech.npy',
+        simsMech = 'output/simsMech.npy'
+
+#rule generate_mech:
+#    message: "Generating params to simulate under"
+#    params:
+#        lower = config["mech_lower"],
+#        upper = config["mech_upper"],
+#        ints = config["ints_mech"]
+#    output:
+#        dir = directory('output/mech_params/')
+#    conda:
+#        'config/antigens.yaml'
+#    shell:
+#        '''
+#        python code/generateParams.py \
+#            --lower {params.lower} \
+#            --upper {params.upper} \
+#            --ints {params.ints} \
+#            --outputdir {output.dir}
+#        '''
 
 rule simulate:
     message: "Simulating range of params"
@@ -23,6 +44,21 @@ rule simulate:
             --output {output.outcomes}
         '''
 
+rule simulate_mech:
+    message: "Simulating range of params"
+    input:
+        params = 'output/mech_params/params_{num}.npy'
+    output:
+        outcomes = 'output/mech_outcomes/mech_{num}.npy'
+    conda:
+        'config/antigens.yaml'
+    shell:
+        '''
+        python code/simulateParamsMech.py \
+            --input {input.params} \
+            --output {output.outcomes}
+        '''
+
 rule concat:
     message: "Combining results of the param sim"
     input:
@@ -31,6 +67,23 @@ rule concat:
     output:
         params = 'output/params.npy',
         outcomes = 'output/sims.npy'
+    shell:
+        '''
+        python code/concatSims.py \
+            --in-params {input.params} \
+            --in-sims {input.outcomes} \
+            --out-params {output.params} \
+            --out-sims {output.outcomes}
+        '''
+
+rule concat_mech:
+    message: "Combining results of the param sim"
+    input:
+        params = expand('output/mech_params/params_{num}.npy',num=files),
+        outcomes = expand('output/mech_outcomes/mech_{num}.npy',num=files)
+    output:
+        params = 'output/paramsMech.npy',
+        outcomes = 'output/simsMech.npy'
     shell:
         '''
         python code/concatSims.py \
