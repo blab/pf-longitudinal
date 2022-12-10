@@ -53,7 +53,7 @@ def overall_outcomes(all_parasites,all_strains,all_malaria,n_people,y):
 
         Parasitemia, perPositivity = check_parasitemia(3,all_parasites[person,...])
         MOI = check_moi(3,all_strains[person])
-        infectionlengths = check_infection_length(all_strains[person],y,all_malaria[person])
+        infectionlengths = check_infection_length(all_strains[person])
         malaria_per_year = len(all_malaria[person])/y
 
         all_parasite_density.extend(Parasitemia)
@@ -76,7 +76,7 @@ def graph_pop(all_parasites,all_strains,all_malaria,output=None):
     ax[0].set_xlabel('log10 parasite density (parasites/uL)')
     ax[1].hist(ilength, bins=50, edgecolor = "black")
     ax[1].set_xlabel('Infection length')
-    ax[2].hist(moi, bins=(max(moi)+1), edgecolor = "black")
+    ax[2].hist(moi, bins=(int(max(moi))+1), edgecolor = "black")
     ax[2].set_xlabel('Multiplicity of infection')
     ax[3].hist(prev, bins=10, edgecolor = "black")
     ax[3].set_xlabel('Prevalence')
