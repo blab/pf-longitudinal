@@ -125,17 +125,22 @@ if __name__ == '__main__':
     n_outcomes = 15 + (5*args.years)
     outcomes = np.empty((n_outcomes,args.people,len(params)))
     for row in range(len(params)):
-        print('simulation: ' + str(row))
-        alleles = params[row,0]
-        nloci = params[row,1]
-        eir = params[row,2]
-        growthrate = params[row,3]
-        tHalf = params[row,4]
-        rend = params[row,5]
-        xh = params[row,6]
-        limm = params[row,7]
+        eir = params[row,0]
+        alleles = params[row,1]
+        nloci = params[row,2]
+        power = params[row,3]
+        growthrate = params[row,4]
+        rscale = params[row,5]
+        meroz = params[row,6]
+        mshape = params[row,7]
+        tHalf = params[row,8]
+        rend = params[row,9]
+        xh = params[row,10]
+        limm = params[row,11]
+        iEffect = params[row,12]
+        iSkew = params[row,13]
         a,w = create_weight_alleles(nloci,alleles)
-        all_parasites, all_immunity, all_strains, all_malaria = mech.simulate_cohort(args.people,args.years,eir,a,w,growthrate=growthrate, tHalf=tHalf,rend=rend,xh=xh,limm=limm)
+        all_parasites, all_immunity, all_strains, all_malaria = mech.simulate_cohort(args.people,args.years,eir,a,w,power=power,growthrate=growthrate,rscale=rscale, meroz=meroz,mshape=mshape, tHalf=tHalf,rend=rend,xh=xh,limm=limm,iEffect=iEffect,iSkew=iSkew)
         for person in range(args.people):
             pmatrix = all_parasites[person,...]
             smatrix = all_strains[person]

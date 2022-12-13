@@ -22,6 +22,11 @@ Variables:
 
   w = vector for weighting immune impact, should all add to one. Length is len(a) + 1
   a = vector containing # of alleles at each loci.
+
+  limm
+
+  iSkew
+  iEffect
 '''
 
 import numpy as np

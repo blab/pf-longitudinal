@@ -17,7 +17,9 @@ Variables:
  - b = -1, intensity of immune effect
  - k = 10^6, maximum parasitemia
  - pgone = 0.001, parasite gone threshold
-
+ - limm
+ - Ieffect
+ - iSkew
 '''
 import numpy as np
 import scipy.stats as st
