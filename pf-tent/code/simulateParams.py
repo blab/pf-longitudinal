@@ -120,17 +120,19 @@ if __name__ == '__main__':
     n_outcomes = 15 + (5*args.years)
     outcomes = np.empty((n_outcomes,args.people,len(params)))
     for row in range(len(params)):
-        t12 = params[row,0]
-        xh = params[row,1]
-        duration = params[row,2]
-        maxP = params[row,3]
-        alleles = params[row,4]
-        eir = params[row,5]
-        nloci = params[row,6]
-        maxPv = params[row,7]
+        eir = params[row,0]
+        alleles = params[row,1]
+        nloci = params[row,2]
+        power = params[row,3]
+        meroz = params[row,4]
+        maxP = params[row,5]
+        duration = params[row,6]
+        thalf = params[row,7]
         limm = params[row,8]
+        iEffect = params[row,9]
+        iSkew = params[row,10]
         a,w = create_weight_alleles(nloci,alleles)
-        all_parasites, all_immunity, all_strains, all_malaria, all_infections = tent.simulate_cohort(args.people,args.years,a,w,t12=t12,eir=eir,duration=duration,maxParasitemia=maxP,maxPv=maxPv,xh=xh,limm=limm)
+        all_parasites, all_immunity, all_strains, all_malaria, all_infections = tent.simulate_cohort(args.people,args.years,a,w,t12=thalf,eir=eir,duration=duration,maxParasitemia=maxP,limm=limm,meroz=meroz,power=power,iEffect=iEffect, iSkew=iSkew)
         for person in range(args.people):
             pmatrix = all_parasites[person,...]
             smatrix = all_strains[person]
@@ -153,8 +155,6 @@ if __name__ == '__main__':
             outcomes[7,person,row] = len(malaria)
 
             pdensity = pmatrix[-1,:,:].sum(axis=0)
-            #peaks = get_peaks(pdensity)
-            #asymps = get_asymptomatics(peaks,malaria)
             asymps = get_asymps(pmatrix,visits,malaria)
             if len(asymps):
                 outcomes[8,person,row] = asymps[0]

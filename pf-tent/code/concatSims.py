@@ -36,4 +36,4 @@ if __name__ == '__main__':
         np.save(f,params)
 
     with open(args.out_sims, 'wb') as f:
-        np.save(f,sims)
+        np.savez_compressed(f,sims)

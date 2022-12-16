@@ -6,14 +6,14 @@ Variables:
   eir = 40, average annual entomological inoculation rate
   t12 = 100, halflife of immunity
 
-  xh = 0.5, parameters shaping immune impact
+  xh = 0.8, parameters shaping immune impact
   b = -1, parameters shaping immune impact
 
   duration = 500, max infection length
   meroz = 0.01, initial parasites/uL, not log scale
   timeToPeak = 10, time from first parasitemia to peak
   maxParasitemia = 5.2, maximum parasitemia on log scale
-  maxPv = 0.25, variance in maximum parasitemia
+  maxPv = 1, variance in maximum parasitemia
 
   power = 1.3, skew of allele frequencies
 
@@ -22,6 +22,11 @@ Variables:
 
   w = vector for weighting immune impact, should all add to one. Length is len(a) + 1
   a = vector containing # of alleles at each loci.
+
+  limm
+
+  iSkew
+  iEffect
 '''
 
 import numpy as np
@@ -62,7 +67,7 @@ def simulate_bites(y,eir):
     bites = np.ceil(trimmed).astype(int)
     return bites
 
-def simulate_strains(n,a,power=1.3):
+def simulate_strains(n,a,power):
     '''
     n = number of strains to simulate
     a = vector whose length corresponds to number of loci.
@@ -102,6 +107,16 @@ def simulate_params(n,duration, meroz, timeToPeak, maxParasitemia,maxPv):
     M[2,:] = peaktime
     M[3,:] = pmax
     return M
+
+def simulate_immune_effect(mean, alpha, a):
+    '''
+    Returns immune loci by allele matrix with immune effect upon exposure.
+    '''
+    n_loci = len(a)
+    n_alleles = max(a)
+    beta = (alpha*(1-mean))/mean
+    effect = np.random.beta(alpha,beta,(n_loci,n_alleles))
+    return effect
 
 def create_allele_matrix(a,y):
     '''
@@ -170,7 +185,7 @@ def sigmoid(x,param,xh=0.5,b=-1):
     new_param = param/(c/np.tan(np.pi/2*x)**b+1)
     return new_param
 
-def modulate_params(gtype, strain_imm, params, w,xh=0.5,b=-1):
+def modulate_params(gtype, strain_imm, params, w,xh,b):
     '''
     Changes all infection params according to immunity:
         gtype = genotype vector for infection
@@ -188,7 +203,7 @@ def modulate_params(gtype, strain_imm, params, w,xh=0.5,b=-1):
     modified[0] = np.rint(modified[0])
     return modified
 
-def update_immunity(pM, iM, t, immune_thresh, t12):
+def update_immunity(pM, iM, t, immune_thresh, t12,immunity):
     '''
     If parasites present, gains immunity. If absent, loses immunity:
         pM = parasitemia matrix at each alleles across time.
@@ -204,7 +219,7 @@ def update_immunity(pM, iM, t, immune_thresh, t12):
         iMt[:] = 0
     else:
         iMt[np.invert(coords)] = np.maximum(iMtold[np.invert(coords)]*np.power(0.5,(1/t12)),0.00001)
-    iMt[coords] = 1
+    iMt[coords] = np.minimum(iMtold[coords] + immunity[coords], 1)
 
 def get_fever_threshold(arr,t):
     '''
@@ -231,7 +246,7 @@ def treat_as_needed(threshhold, pM, sM, t, m):
         m.append(t)
     return m
 
-def simulate_person(y,a,w,fever_arr, eir=40, t12=100,immune_thresh=0.01,duration = 500, meroz = .01, timeToPeak = 10, maxParasitemia = 6, maxPv = 0.25, pgone=-3,power=1.3,xh=0.5,b=-1):
+def simulate_person(y,a,w,fever_arr, eir=40, t12=100,immune_thresh=0.01,duration = 500, meroz = .01, timeToPeak = 10, maxParasitemia = 6, maxPv = 1, pgone=-3,power=1.3,xh=0.8,b=-1,iEffect=0.05,iSkew=2):
     '''
     Runs simulation for one person.
     Returns:
@@ -247,6 +262,7 @@ def simulate_person(y,a,w,fever_arr, eir=40, t12=100,immune_thresh=0.01,duration
     n_bites = len(bites)
     strains = simulate_strains(n_bites,a,power)
     params_matrix = simulate_params(n_bites,duration,meroz,timeToPeak,maxParasitemia,maxPv)
+    immunity = simulate_immune_effect(iEffect, iSkew, a)
     pmatrix = create_allele_matrix(a, y)
     smatrix = create_strain_matrix(n_bites,y)
     imatrix = create_allele_matrix(a,y)
@@ -256,7 +272,7 @@ def simulate_person(y,a,w,fever_arr, eir=40, t12=100,immune_thresh=0.01,duration
 
     counter = 0
     for t in range(365*y):
-        update_immunity(pmatrix,imatrix,t,immune_thresh, t12)
+        update_immunity(pmatrix,imatrix,t,immune_thresh, t12,immunity)
         treatment_thresh = get_fever_threshold(fever_arr,t)
         malaria = treat_as_needed(treatment_thresh,pmatrix,smatrix,t,malaria)
         if t in bites:
@@ -280,7 +296,7 @@ def simulate_person(y,a,w,fever_arr, eir=40, t12=100,immune_thresh=0.01,duration
     return pmatrix, smatrix, imatrix, malaria, infectmatrix
 
 
-def simulate_cohort(n_people,y,a,w,t12=100,eir=40,immune_thresh=0.001,duration=500,meroz=0.01,timeToPeak=10,maxParasitemia=6,maxPv=0.25,pgone=-3,power=1.3,xh=0.5,b=-1,limm=0.6):
+def simulate_cohort(n_people,y,a,w,t12=100,eir=40,immune_thresh=0.001,duration=500,meroz=0.01,timeToPeak=10,maxParasitemia=6,maxPv=1,pgone=-3,power=1.3,xh=0.8,b=-1,iEffect=0.05,iSkew=2,limm=0.6):
     '''
     Simulates an entire cohort of individuals.
 
@@ -309,7 +325,7 @@ def simulate_cohort(n_people,y,a,w,t12=100,eir=40,immune_thresh=0.001,duration=5
     adjeir = limm*eir
     # Simulate people
     for person in range(n_people):
-        pmatrix, smatrix, imatrix, malaria, infections = simulate_person(y,a,w,fever_arr,eir=adjeir, t12=t12,immune_thresh=immune_thresh,duration=duration, meroz=meroz, timeToPeak=timeToPeak, maxParasitemia=maxParasitemia, maxPv = maxPv, pgone=pgone,power=power,xh=xh,b=b)
+        pmatrix, smatrix, imatrix, malaria, infections = simulate_person(y,a,w,fever_arr,eir=adjeir, t12=t12,immune_thresh=immune_thresh,duration=duration, meroz=meroz, timeToPeak=timeToPeak, maxParasitemia=maxParasitemia, maxPv = maxPv, pgone=pgone,power=power,xh=xh,b=b,iEffect=iEffect,iSkew=iSkew)
         all_parasites[person,:,:,:] = pmatrix
         all_immunity[person,:,:,:] = imatrix
         all_strains[person] = smatrix
