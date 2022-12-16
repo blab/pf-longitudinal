@@ -22,7 +22,7 @@ if __name__ == '__main__':
 
     results_df = pd.DataFrame()
     results_dict = {}
-    intervals = [1.4,1.8,2.2,2.6,3]
+    intervals = [1,1.4,1.8,2.2,2.6,3]
     for power in intervals:
         a = list(np.repeat(10,7))
         w = [0,0]
@@ -42,7 +42,7 @@ if __name__ == '__main__':
         d['measured'] = args.measured
         d['n_exp'] = args.experiments
         d['years'] = args.years
-        d['eir'] = 40
+        d['eir'] = 90
         d['loci_importance'] = 'equal'
     with open(args.output+'.tsv', 'w') as file:
         results_df.to_csv(file,sep="\t",index=False)

@@ -5,7 +5,7 @@ Code for power calculations on longitudinal trajectories
 import numpy as np
 import scipy.stats as st
 import pandas as pd
-import pfTent as tent
+import pfMech as sim
 
 def get_visits(malaria,period,y):
     '''
@@ -93,7 +93,7 @@ def get_max_pdensity(pmatrix,loci,allele,window,visits=[]):
         maxima = pdensities[peaktimes[0]]
     return maxima
 
-def get_max_exp1_exp2(all_parasites, all_infections, all_strains, all_malaria,y,a,loci,period=28,measured=True):
+def get_max_exp1_exp2(all_parasites, all_strains, all_malaria,y,a,loci,period=28,measured=True):
     '''
     Returns arrays of maximum parasite density for exposure 1 & 2.
     If measured == True, this will be for measured maximums not true maximums.
@@ -116,7 +116,7 @@ def get_max_exp1_exp2(all_parasites, all_infections, all_strains, all_malaria,y,
 
         # Control loci
         for allele in range(a[0]): ## SPEED UP by doing get-infection-windows for all alleles all at once.
-            windows = get_infection_windows(0,allele,all_parasites[person,...],visits=visits,infectmatrix=all_infections[person],smatrix=all_strains[person])
+            windows = get_infection_windows(0,allele,all_parasites[person,...],visits=visits)
             if np.all(windows[:,0]>=0):
                 control[ccount,0] = get_max_pdensity(all_parasites[person,...],0,allele,windows[:,0], visits=visits)
             if np.all(windows[:,1]>= 0): # WHY IS THIS NOT WORKING
@@ -125,7 +125,7 @@ def get_max_exp1_exp2(all_parasites, all_infections, all_strains, all_malaria,y,
 
         # Test loci
         for allele in range(a[loci]):
-            windows = get_infection_windows(loci,allele,all_parasites[person,...],visits=visits,infectmatrix=all_infections[person],smatrix=all_strains[person])
+            windows = get_infection_windows(loci,allele,all_parasites[person,...],visits=visits)
             if np.all(windows[:,0] >=0):
                 test[tcount,0] = get_max_pdensity(all_parasites[person,...],loci,allele,windows[:,0], visits=visits)
             if np.all(windows[:,1] >=0):
@@ -166,7 +166,7 @@ def get_sens_spec(control, test, cutoff):
     return sens, spec
 
 
-def power_calc_1st2nd(y,a,w,experiments,eir=40,intervals=[10,50,100,500],cutoff=0.05,measured=True,power=0):
+def power_calc_1st2nd(y,a,w,experiments,eir=90,intervals=[10,50,100,500],cutoff=0.05,measured=True,power=2):
     '''
     Returns sensitivity & specificity for 10**x number of people.
     Test = Diff in parasite density at first vs. second exposure.
@@ -190,9 +190,9 @@ def power_calc_1st2nd(y,a,w,experiments,eir=40,intervals=[10,50,100,500],cutoff=
         control_pvalue = []
         test_pvalue = []
         for experiment in range(experiments):
-            all_parasites, all_immunity, all_strains, all_malaria, all_infections = tent.simulate_cohort(n_people,y,a,w,eir=eir,power=power)
+            all_parasites, all_immunity, all_strains, all_malaria = sim.simulate_cohort(n_people,y,eir,a,w,power=power)
             for l in [1,len(a)-1]:
-                control,test, n_control, n_test = get_max_exp1_exp2(all_parasites,all_infections,all_strains,all_malaria,y,a,l,measured=measured)
+                control,test, n_control, n_test = get_max_exp1_exp2(all_parasites,all_strains,all_malaria,y,a,l,measured=measured)
                 diff_control, diff_test = get_diff(control,test)
                 try:
                     s,pvalue = st.mannwhitneyu(x=diff_control,y=diff_test)
@@ -435,7 +435,7 @@ def power_calc_sinceExp(y,a,w,experiments,eir=40,intervals=[10,50,100,500],r2_cu
                 results[key][ltype]['r2'] = []
                 results[key][ltype]['slope'] = []
         for experiment in range(experiments):
-            all_parasites, all_immunity, all_strains, all_malaria, all_infections = tent.simulate_cohort(n_people,y,a,w,eir=eir,power=power)
+            all_parasites, all_immunity, all_strains, all_malaria, all_infections = sim.simulate_cohort(n_people,y,a,w,eir=eir,power=power)
             for key, l in zip(['control','test'],[1,len(a)-1]):
                 pdensInitial, timesInitial = getPdensityExpInitial(y,a,l,all_parasites,all_malaria)
                 slopeInitial, interceptInitial, rInitial, pInitial, seInitial = st.linregress(timesInitial,pdensInitial)

@@ -43,8 +43,8 @@ if __name__ == '__main__':
         d['measured'] = args.measured
         d['n_exp'] = args.experiments
         d['years'] = args.years
-        d['eir'] = 40
-        d['allele_freq'] = 'uniform'
+        d['eir'] = 90
+        d['allele_freq'] = 2
     with open(args.output+'.tsv', 'w') as file:
         results_df.to_csv(file,sep="\t",index=False)
     with open(args.output+'.json', 'w') as file:

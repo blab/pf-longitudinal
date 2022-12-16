@@ -22,7 +22,7 @@ if __name__ == '__main__':
 
     results_df = pd.DataFrame()
     results_dict = {}
-    intervals = [2,20,40,100,250]
+    intervals = [10,25,50,100,150,250]
     for eir in intervals:
         a = list(np.repeat(10,7))
         w = [0,0]
@@ -42,7 +42,7 @@ if __name__ == '__main__':
         d['measured'] = args.measured
         d['n_exp'] = args.experiments
         d['years'] = args.years
-        d['allele_freq'] = 'uniform'
+        d['allele_freq'] = 2
         d['loci_importance'] = 'equal'
     with open(args.output+'.tsv', 'w') as file:
         results_df.to_csv(file,sep="\t",index=False)

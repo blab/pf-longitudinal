@@ -22,13 +22,12 @@ if __name__ == '__main__':
 
     results_df = pd.DataFrame()
     results_dict = {}
-    intervals = [2,5,10,15,20,50,100]
+    intervals = [2,5,10,15,20]
     for n_alleles in intervals:
         a = list(np.repeat(n_alleles,7))
         w = [0,0]
         i_w = list(np.repeat(1/5, 5))
         w.extend(i_w)
-        print('n_alleles: ' + str(n_alleles))
         df, dic = pc.power_calc_1st2nd(args.years,a,w,args.experiments,measured=args.measured)
         df['n_alleles'] = n_alleles
         df['n_ctrlAlleles'] = n_alleles
@@ -41,8 +40,8 @@ if __name__ == '__main__':
         d['measured'] = args.measured
         d['n_exp'] = args.experiments
         d['years'] = args.years
-        d['eir'] = 40
-        d['allele_freq'] = 'uniform'
+        d['eir'] = 90
+        d['allele_freq'] = 2
         d['loci_importance'] = 'equal'
     with open(args.output+'.tsv', 'w') as file:
         results_df.to_csv(file,sep="\t",index=False)
