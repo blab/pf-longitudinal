@@ -126,15 +126,13 @@ if __name__ == '__main__':
         power = params[row,3]
         meroz = params[row,4]
         maxP = params[row,5]
-        maxPv = params[row,6]
-        duration = params[row,7]
-        thalf = params[row,8]
-        xh = params[row,9]
-        limm = params[row,10]
-        iEffect = params[row,11]
-        iSkew = params[row,12]
+        duration = params[row,6]
+        thalf = params[row,7]
+        limm = params[row,8]
+        iEffect = params[row,9]
+        iSkew = params[row,10]
         a,w = create_weight_alleles(nloci,alleles)
-        all_parasites, all_immunity, all_strains, all_malaria, all_infections = tent.simulate_cohort(args.people,args.years,a,w,t12=thalf,eir=eir,duration=duration,maxParasitemia=maxP,maxPv=maxPv,xh=xh,limm=limm,meroz=meroz,power=power,iEffect=iEffect, iSkew=iSkew)
+        all_parasites, all_immunity, all_strains, all_malaria, all_infections = tent.simulate_cohort(args.people,args.years,a,w,t12=thalf,eir=eir,duration=duration,maxParasitemia=maxP,limm=limm,meroz=meroz,power=power,iEffect=iEffect, iSkew=iSkew)
         for person in range(args.people):
             pmatrix = all_parasites[person,...]
             smatrix = all_strains[person]

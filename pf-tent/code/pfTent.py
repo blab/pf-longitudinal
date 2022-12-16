@@ -6,14 +6,14 @@ Variables:
   eir = 40, average annual entomological inoculation rate
   t12 = 100, halflife of immunity
 
-  xh = 0.5, parameters shaping immune impact
+  xh = 0.8, parameters shaping immune impact
   b = -1, parameters shaping immune impact
 
   duration = 500, max infection length
   meroz = 0.01, initial parasites/uL, not log scale
   timeToPeak = 10, time from first parasitemia to peak
   maxParasitemia = 5.2, maximum parasitemia on log scale
-  maxPv = 0.25, variance in maximum parasitemia
+  maxPv = 1, variance in maximum parasitemia
 
   power = 1.3, skew of allele frequencies
 
@@ -246,7 +246,7 @@ def treat_as_needed(threshhold, pM, sM, t, m):
         m.append(t)
     return m
 
-def simulate_person(y,a,w,fever_arr, eir=40, t12=100,immune_thresh=0.01,duration = 500, meroz = .01, timeToPeak = 10, maxParasitemia = 6, maxPv = 0.25, pgone=-3,power=1.3,xh=0.5,b=-1,iEffect=0.05,iSkew=2):
+def simulate_person(y,a,w,fever_arr, eir=40, t12=100,immune_thresh=0.01,duration = 500, meroz = .01, timeToPeak = 10, maxParasitemia = 6, maxPv = 1, pgone=-3,power=1.3,xh=0.8,b=-1,iEffect=0.05,iSkew=2):
     '''
     Runs simulation for one person.
     Returns:
@@ -296,7 +296,7 @@ def simulate_person(y,a,w,fever_arr, eir=40, t12=100,immune_thresh=0.01,duration
     return pmatrix, smatrix, imatrix, malaria, infectmatrix
 
 
-def simulate_cohort(n_people,y,a,w,t12=100,eir=40,immune_thresh=0.001,duration=500,meroz=0.01,timeToPeak=10,maxParasitemia=6,maxPv=0.25,pgone=-3,power=1.3,xh=0.5,b=-1,iEffect=0.05,iSkew=2,limm=0.6):
+def simulate_cohort(n_people,y,a,w,t12=100,eir=40,immune_thresh=0.001,duration=500,meroz=0.01,timeToPeak=10,maxParasitemia=6,maxPv=1,pgone=-3,power=1.3,xh=0.8,b=-1,iEffect=0.05,iSkew=2,limm=0.6):
     '''
     Simulates an entire cohort of individuals.
 

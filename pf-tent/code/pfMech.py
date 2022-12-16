@@ -2,24 +2,24 @@
 Code to simulate within-host Pf using growth rate model.
 Variables:
  - y, years to simulate
- - eir, entomological inoculation rate to simulate under
+ - eir, entomological inoculation rate to simulate under, reasonable range: (10-250), use 90 typically
  - a, vector whose length corresponds to number of loci. Each entry corresponds
- to number of alleles at that loci.
+ to number of alleles at that loci. Need 2-20 alleles per locus. Often use 10. Can use 2-100 locik usually use 20. Less variability with more loci.
  - w, vector weighting immunity at each loci. Should sum to 1.
- - power = 1, skew of allele frequency
- - meroz = 0.8, scale for mz AKA rough median
- - mshape = 1, variance of lognorm distribution for starting number of merozoites
- - growthrate = 0.6, average growthrate
- - rscale = 0.15, variance in growthrate
- - tHalf = 100, half-life for immunity
- - rend = final growth rate at full immunity
- - xh = inflection point for % immunity change
+ - power = 2, skew of allele frequency. Reasonable range: 1-3
+ - meroz = 0.8, scale for mz AKA rough median. Reasonable range: 0.01-10
+ - mshape = 1, variance of lognorm distribution for starting number of merozoites. Reasonable range: 0.2 -2
+ - growthrate = 0.9, average growthrate. Reasonable range: 0.15-1.5
+ - rscale = 0.4, variance in growthrate. Reasonable range: 0.3 - 0.7
+ - tHalf = 400, half-life for immunity. Reasonable range: 300-1000
+ - rend = -0.025, final growth rate at full immunity. Reasonable range: -0.04 to -0.01
+ - xh = 0.5, inflection point for % immunity change
  - b = -1, intensity of immune effect
  - k = 10^6, maximum parasitemia
  - pgone = 0.001, parasite gone threshold
- - limm
- - Ieffect
- - iSkew
+ - limm = 0.6, liver stage immunity
+ - Ieffect = 0.2, mean of beta distriubution. Reasonable range: 0.12-0.5
+ - iSkew = 0.8, alpha for beta distribution. Reasonable range = 0.65-1,
 '''
 import numpy as np
 import scipy.stats as st
@@ -263,7 +263,7 @@ def get_fever_arr(eir,fever,breaks):
     arr = np.stack((age,10**pdens),axis=1)
     return arr
 
-def simulate_person(y,eir,a,w,fever_arr,meroz=0.8,growthrate=0.8,mshape=1,rscale=0.4,tHalf=300,rend=-0.05,xh=0.5,b=-1,k=10**6,pgone=0.001,power=1.3,iEffect=0.05,iSkew=2):
+def simulate_person(y,eir,a,w,fever_arr,meroz=0.8,growthrate=0.9,mshape=1,rscale=0.4,tHalf=400,rend=-0.025,xh=0.5,b=-1,k=10**6,pgone=0.001,power=2,iEffect=0.25,iSkew=0.8):
     '''
     Runs simulation for one person. Returns matrix tracking parasitemia by allele,
     matrix tracking immunity by allele, matrix tracking parasitemia by strain, and
@@ -323,7 +323,7 @@ def simulate_person(y,eir,a,w,fever_arr,meroz=0.8,growthrate=0.8,mshape=1,rscale
         update_immunity(t=t,pM=pM,iM=iM,gamma=gamma,immunity=immunity)
     return pM, iM, sM, malaria
 
-def simulate_cohort(n_people,y,eir,a,w,meroz=0.8,growthrate=0.8,mshape=1,rscale=0.4,tHalf=300,rend=-0.05,xh=0.5,b=-1,k=10**6,pgone=0.001,power=1.3,iEffect=0.05,iSkew=2,limm=0.6):
+def simulate_cohort(n_people,y,eir,a,w,meroz=0.8,growthrate=0.9,mshape=1,rscale=0.4,tHalf=400,rend=-0.025,xh=0.5,b=-1,k=10**6,pgone=0.001,power=2,iEffect=0.25,iSkew=0.8,limm=0.6):
     '''
     Simulates an entire cohort of individuals.
 

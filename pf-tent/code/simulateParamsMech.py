@@ -135,12 +135,10 @@ if __name__ == '__main__':
         mshape = params[row,7]
         tHalf = params[row,8]
         rend = params[row,9]
-        xh = params[row,10]
-        limm = params[row,11]
-        iEffect = params[row,12]
-        iSkew = params[row,13]
+        iEffect = params[row,10]
+        iSkew = params[row,11]
         a,w = create_weight_alleles(nloci,alleles)
-        all_parasites, all_immunity, all_strains, all_malaria = mech.simulate_cohort(args.people,args.years,eir,a,w,power=power,growthrate=growthrate,rscale=rscale, meroz=meroz,mshape=mshape, tHalf=tHalf,rend=rend,xh=xh,limm=limm,iEffect=iEffect,iSkew=iSkew)
+        all_parasites, all_immunity, all_strains, all_malaria = mech.simulate_cohort(args.people,args.years,eir,a,w,power=power,growthrate=growthrate,rscale=rscale, meroz=meroz,mshape=mshape, tHalf=tHalf,rend=rend,iEffect=iEffect,iSkew=iSkew)
         for person in range(args.people):
             pmatrix = all_parasites[person,...]
             smatrix = all_strains[person]
