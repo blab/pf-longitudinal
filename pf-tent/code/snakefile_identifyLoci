@@ -1,0 +1,28 @@
+'''
+Use method to identify loci.
+'''
+iter = list(range(10))
+eirs = [10,50,100,250]
+
+
+rule all:
+    input:
+        infectDF = expand('output/infections/infectLevel_eir{eir}_{it}.tsv', it=iter, eir=eirs),
+        cloneDF = expand('output/infections/cloneLevel_eir{eir}_{it}.tsv', it=iter, eir=eirs)
+
+rule simulateAMA1:
+    message: "Simulate AMA1 sequencing"
+    params:
+      eir = lambda w: w.eir,
+      nPeople = 1000
+    output:
+        infections = 'output/infections/infectLevel_eir{eir}_{it}.tsv',
+        clones = 'output/infections/cloneLevel_eir{eir}_{it}.tsv'
+    shell:
+        '''
+        python code/simulateAMA1.py \
+            --n {params.nPeople} \
+            --eir {params.eir} \
+            --output-clone {output.clones} \
+            --output-infect {output.infections} \
+        '''

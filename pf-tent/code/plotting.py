@@ -98,7 +98,7 @@ def graph_pop(all_parasites,all_strains,all_malaria,output=None):
         print('std:' + str(np.std(values)))
         print('---------------------')
 
-def graph_trajectories(n,all_parasites,output=None):
+def graph_trajectories(n,all_parasites,all_bites,output=None):
     '''
     Graphs overall pdens trajectories n individuals in the cohort.
     '''
@@ -109,18 +109,19 @@ def graph_trajectories(n,all_parasites,output=None):
     height = 4*n
     fig, ax = plt.subplots(nrows=n,tight_layout=True, figsize=(14,height))
     for i,person in enumerate(range(5,n_people,spacing)):
+        nLoci,nBites = all_bites[person].shape
         ax[i].tick_params(axis='both', which='major', labelsize=14)
         ax[i].set_yscale('log')
         ax[i].plot(np.arange(y*365)/365, all_parasites[person,-1,:,:].sum(axis=0),color="black")
-
-        ax[i].set_ylim(0.001,3000000)
+        ax[i].plot(all_bites[person][0,:]/365,np.repeat(0.0005,nBites),'^',color='grey')
+        ax[i].set_ylim(0.00028,3000000)
         ax[i].set_title('person ' + str(person),fontsize=18)
         ax[i].set_xlabel('Years',fontsize=16)
         ax[i].set_ylabel('Parasites/uL',fontsize=16)
     if output:
         fig.savefig(output)
 
-def graph_individual(a,locus,pmatrix,imatrix,output=None):
+def graph_individual(a,locus,pmatrix,imatrix, malaria,output=None):
     '''
     Graphs overall parasite density & pdensity & immunity at each allele of a locus.
     '''
@@ -129,16 +130,18 @@ def graph_individual(a,locus,pmatrix,imatrix,output=None):
     colors = {0:"tab:blue", 1:"tab:orange", 2:"tab:green", 3:"tab:red", 4:"tab:purple", 5:"tab:brown", 6:"tab:pink",7:"tab:olive",8:"tab:grey",9:"tab:cyan"}
 
     height=3*(2+alleles)
-    fig, ax = plt.subplots(nrows=2+alleles, sharey=True, sharex=True, tight_layout=True, figsize=(14,height))
+    fig, ax = plt.subplots(nrows=2+alleles, sharey=True, sharex=False, tight_layout=True, figsize=(14,height))
     ax[0].tick_params(axis='both', which='major', labelsize=14)
     ax[1].tick_params(axis='both', which='major', labelsize=14)
     ax[0].set_yscale('log')
+    ax[0].vlines(np.array(malaria)/365, np.repeat(0.001,len(malaria)), np.repeat(10000000,len(malaria)),color='red',linestyle='dashed',linewidth=3)
     ax[0].plot(np.arange(y*365)/365, pmatrix[locus,:,:].sum(axis=0),color="black")
     for strain in np.arange(alleles):
         iStrain = pmatrix[locus,strain,:]
         if np.sum(iStrain) > 1:
             ax[1].plot(np.arange(y*365)/365, iStrain, linewidth=2,color=colors[strain])
     ax[0].set_ylim(0.001,3000000)
+    ax[0].set_xlabel('Years',fontsize=16)
     ax[1+alleles].set_xlabel('Years',fontsize=16)
     ax[0].set_ylabel('Parasites/uL)',fontsize=16)
     ax[0].set_title('Total parasite density')
@@ -152,22 +155,25 @@ def graph_individual(a,locus,pmatrix,imatrix,output=None):
         ax2 = ax[row].twinx()
         ax2.set_ylabel('Strain immunity',fontsize=16)
         ax2.plot(np.arange(y*365)/365, imatrix[locus,row-2,:],linewidth=1.5,color='black',linestyle='dashed')
+    #for i in range(0,2+alleles):
+
 
     if output:
         fig.savefig(output)
 
-def check_outcomes(a,locus,all_parasites,all_immunity,all_strains,all_malaria,output=None):
+def check_outcomes(a,locus,all_parasites,all_immunity,all_strains,all_malaria,all_bites,output=None):
     '''
     Produces graphs for simulations.
     '''
     if output:
-        output_p = output + "_pop.pdf"
-        output_t = output + "_trajectory.pdf"
-        output_i = output + "_individual.pdf"
+        output_p = output + "_pop.png"
+        output_t = output + "_trajectory.png"
+        output_i = output + "_individual.png"
     else:
         output_p = None
         output_t = None
         output_i = None
+    n_people = len(all_parasites)
     graph_pop(all_parasites,all_strains,all_malaria,output=output_p)
-    graph_trajectories(5,all_parasites,output=output_t)
-    graph_individual(a,locus,all_parasites[-1,...],all_immunity[-1,...],output=output_i)
+    graph_trajectories(5,all_parasites,all_bites,output=output_t)
+    graph_individual(a,locus,all_parasites[-1,...],all_immunity[-1,...],all_malaria[n_people-1],output=output_i)

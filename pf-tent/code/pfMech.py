@@ -4,7 +4,7 @@ Variables:
  - y, years to simulate
  - eir, entomological inoculation rate to simulate under, reasonable range: (10-250), use 90 typically
  - a, vector whose length corresponds to number of loci. Each entry corresponds
- to number of alleles at that loci. Need 2-20 alleles per locus. Often use 10. Can use 2-100 locik usually use 20. Less variability with more loci.
+ to number of alleles at that loci. Need 2-20 alleles per locus. Often use 10. Can use 2-100 loci usually use 20. Less variability with more loci.
  - w, vector weighting immunity at each loci. Should sum to 1.
  - power = 2, skew of allele frequency. Reasonable range: 1-3
  - meroz = 0.8, scale for mz AKA rough median. Reasonable range: 0.01-10
@@ -290,6 +290,10 @@ def simulate_person(y,eir,a,w,fever_arr,meroz=0.8,growthrate=0.9,mshape=1,rscale
     gamma = 0.693/tHalf
     immunity = simulate_immune_effect(iEffect,iSkew,a)
 
+    simulated = np.zeros((len(a)+1,n))
+    simulated[0,:] = bites
+    simulated[1:,:] = gtypes
+
     # Creates objects to record
     pM = create_allele_matrix(a,y)
     iM = create_allele_matrix(a,y)
@@ -321,7 +325,7 @@ def simulate_person(y,eir,a,w,fever_arr,meroz=0.8,growthrate=0.9,mshape=1,rscale
         thresh = get_fever_threshold(fever_arr, t)
         malaria,active = treat_malaria(t,thresh,pM,sM,malaria,active)
         update_immunity(t=t,pM=pM,iM=iM,gamma=gamma,immunity=immunity)
-    return pM, iM, sM, malaria
+    return pM, iM, sM, malaria, simulated
 
 def simulate_cohort(n_people,y,eir,a,w,meroz=0.8,growthrate=0.9,mshape=1,rscale=0.4,tHalf=400,rend=-0.025,xh=0.5,b=-1,k=10**6,pgone=0.001,power=2,iEffect=0.25,iSkew=0.8,limm=0.6):
     '''
@@ -343,6 +347,7 @@ def simulate_cohort(n_people,y,eir,a,w,meroz=0.8,growthrate=0.9,mshape=1,rscale=
     all_immunity = np.zeros((n_people, len(a), max(a), y*365))
     all_strains = {}
     all_malaria = {}
+    all_bites = {}
 
     # Load dataset for fever threshhold
     fever, breaks = load_data()
@@ -352,10 +357,11 @@ def simulate_cohort(n_people,y,eir,a,w,meroz=0.8,growthrate=0.9,mshape=1,rscale=
 
     # Simulate people
     for person in range(n_people):
-        pmatrix, imatrix, smatrix, malaria = simulate_person(y,adjeir,a,w,fever_arr,meroz=meroz,growthrate=growthrate,mshape=mshape,rscale=rscale,tHalf=tHalf,rend=rend,xh=xh,b=b,k=k,pgone=pgone,power=power,iEffect=iEffect, iSkew=iSkew)
+        pmatrix, imatrix, smatrix, malaria, bites = simulate_person(y,adjeir,a,w,fever_arr,meroz=meroz,growthrate=growthrate,mshape=mshape,rscale=rscale,tHalf=tHalf,rend=rend,xh=xh,b=b,k=k,pgone=pgone,power=power,iEffect=iEffect, iSkew=iSkew)
         all_parasites[person,:,:,:] = pmatrix
         all_immunity[person,:,:,:] = imatrix
         all_strains[person] = smatrix
         all_malaria[person] = malaria
+        all_bites[person] = bites
 
-    return all_parasites, all_immunity, all_strains, all_malaria
+    return all_parasites, all_immunity, all_strains, all_malaria, all_bites
